@@ -1,0 +1,22 @@
+name: Sugestão
+description: Uma ideia ou ajuste para o Coruja
+labels: [sugestão]
+body:
+  - type: textarea
+    id: problema
+    attributes:
+      label: Qual problema isso resolve
+      description: O que hoje é chato, lento ou manual?
+    validations:
+      required: true
+  - type: textarea
+    id: ideia
+    attributes:
+      label: Ideia
+      description: Como você imagina que deveria funcionar.
+    validations:
+      required: true
+  - type: textarea
+    id: alternativas
+    attributes:
+      label: Alternativas que você considerou

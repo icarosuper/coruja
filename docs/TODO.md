@@ -15,6 +15,19 @@ decided (decisions #11–#16).
   available? (Required by decisions #4.)
 - **Domain:** which subdomain of the personal domain.
 
+## Before going public (after the MVP)
+
+- **Review what the repo says about the team and the company.** Docs describe the internal process
+  (sheet layout, teams, the manager's targets). The first commit (`9fe8a69`) still has two
+  colleagues' nicknames in `docs/agents/decisions.md` #1: rewrite history or accept it.
+- **No real data in the repo:** the CSV import reads a file passed by path; the real export stays
+  out (`*.csv`/`*.xlsx` are gitignored). Seed data uses made-up nicknames.
+- **Secrets:** team password, Teams webhook URL and similar live in Worker secrets, never in
+  `wrangler.jsonc`.
+- **Branch protection on `master`** (free once public): require PR + green CI for everyone but the
+  owner.
+- **PR previews** (below).
+
 ## Build order
 
 1. **Domain model + schema** — devs, tokens, profile rules, months, days (15h/24h), shifts/segments,
@@ -31,3 +44,7 @@ decided (decisions #11–#16).
 9. **Outlook `.ics` feed** per dev.
 10. **MCP server** for Claude Code.
 11. **Teams notifications** (if the Workflows question resolves).
+12. **PR previews with a staging database** — a `preview` environment in `wrangler.jsonc` (separate
+    Worker `coruja-preview` + its own D1 `coruja-staging` with seed data); Workers Builds runs
+    `wrangler versions upload` for non-`master` branches, building with `CLOUDFLARE_ENV=preview`
+    so the Vite plugin picks that environment. One staging DB shared by all PRs.

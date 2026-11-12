@@ -5,7 +5,7 @@ Choices that look wrong (or arbitrary) but are intentional. Read before "fixing"
 ## Index
 
 Entries are **self-contained**: read only the one you were pointed at. Cite by **anchor**, never by
-line number. A new entry takes the **next number** (highest today is **#16**) plus one line here;
+line number. A new entry takes the **next number** (highest today is **#17**) plus one line here;
 never renumber.
 
 - [**#1** — Only the dev team's Banking column; devs are nicknames](#1-only-the-dev-teams-banking-column-devs-are-nicknames)
@@ -24,6 +24,7 @@ never renumber.
 - [**#14** — Holidays are São Paulo city's, computed in code and overridable](#14-holidays-are-sao-paulo-citys-computed-in-code-and-overridable)
 - [**#15** — Hours are counted by calendar hour](#15-hours-are-counted-by-calendar-hour)
 - [**#16** — The starting balance comes from the November 2026 CSV](#16-the-starting-balance-comes-from-the-november-2026-csv)
+- [**#17** — Rolling release from master; migrations stay backward compatible](#17-rolling-release-from-master-migrations-stay-backward-compatible)
 
 ---
 
@@ -31,7 +32,7 @@ never renumber.
 
 The manager's sheet has three columns per day (Sustentação, Banking, Infra). Coruja handles only
 Banking, which is the dev team's rotation. Sustentação only carries "Expediente" markers and Infra
-is another team. Devs are stored by the nickname used in the sheet ("Leozão", "Leozinho"), with no
+is another team. Devs are stored by the short nickname used in the sheet, with no
 full name or email.
 
 **Don't "fix" by:** adding Infra/Sustentação to the scheduler, or adding emails "for notifications"
@@ -213,3 +214,20 @@ worked; that is accepted. Earlier months are not imported.
 
 **Don't "fix" by:** importing the summary table's HORAS/compensação columns instead of counting the
 grid.
+
+### 17. Rolling release from master; migrations stay backward compatible
+
+Every merge to `master` goes to production (Workers Builds deploys on push). No SemVer and no
+release branches: it is a single web deployment, nobody installs or picks a version, and Cloudflare
+keeps previous Worker versions, so `wrangler rollback` undoes a bad deploy in seconds. The change
+log is `git log`: squash merges with Conventional Commit titles give one line per PR.
+
+Rollback only reverts **code**, not D1. So migrations are applied **before** the deploy and must
+work with the previous code too (expand/contract: add the new column in one deploy, drop the old
+one in a later deploy).
+
+Tags are milestones only, with a GitHub Release whose notes are generated from PR titles — the
+first is `v0.1.0` when the MVP ships and the repo goes public.
+
+**Don't "fix" by:** adding a release branch or version bumps per change, or shipping a migration
+that drops/renames something the current code still reads.

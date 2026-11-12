@@ -1,0 +1,43 @@
+name: Problema
+description: Algo não funciona como deveria
+labels: [problema]
+body:
+  - type: textarea
+    id: o-que-aconteceu
+    attributes:
+      label: O que aconteceu
+      description: Descreva o problema. Prints ajudam muito.
+    validations:
+      required: true
+  - type: textarea
+    id: o-que-esperava
+    attributes:
+      label: O que você esperava
+    validations:
+      required: true
+  - type: textarea
+    id: como-reproduzir
+    attributes:
+      label: Como reproduzir
+      description: Passo a passo, se souber.
+      placeholder: |
+        1. Abri a escala de dezembro
+        2. Troquei o plantão do dia 14
+        3. ...
+  - type: input
+    id: mes-dia
+    attributes:
+      label: Mês / dia afetado
+      placeholder: ex. dezembro/2026, dia 14
+  - type: dropdown
+    id: onde
+    attributes:
+      label: Onde
+      multiple: true
+      options:
+        - Calendário / escala do mês
+        - Perfil e preferências
+        - Sugestão automática (algoritmo)
+        - Exportação para o Excel (Office Script)
+        - MCP / Claude Code
+        - Outro

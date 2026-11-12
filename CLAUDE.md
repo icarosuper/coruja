@@ -62,8 +62,9 @@ SPA + Vite (`@cloudflare/vite-plugin`) · TypeScript 6 · bun · Biome · Vitest
 ## Language: English only
 
 Everything in the repo is in English: code, comments, docs, file names, commit messages.
-(Conversation with the user is in Portuguese; the repo is not.) **Exception: UI strings are in
-Portuguese** — the users are the Brazilian dev team.
+(Conversation with the user is in Portuguese; the repo is not.) **Exceptions, in Portuguese:** UI
+strings, and what colleagues read or fill in on GitHub — `CONTRIBUTING.md`, issue and PR templates
+in `.github/`. The users and contributors are the Brazilian dev team.
 
 ## Readability
 
@@ -94,10 +95,17 @@ chars. Types: `feat`, `fix`, `refactor`, `docs`, `test`, `chore`.
 
 The subject states the behavior, not the file: describe the rule that now holds.
 
-## Branch
+## Branch and PRs
 
-Straight to `master` by default. For a larger feature that takes several commits, **ask first**
-whether the user wants a branch.
+- **The user** commits straight to `master` by default. For a larger feature that takes several
+  commits, **ask first** whether the user wants a branch.
+- **Anyone else** (colleagues, and their agents) works on a branch and opens a PR. Merges are
+  squash-only and the **PR title becomes the commit subject**, so it follows the commit style below;
+  CI checks it. Contributor guide: [CONTRIBUTING.md](CONTRIBUTING.md).
+- CI (`.github/workflows/ci.yml`) runs `bun run verify` and the build on every push and PR.
+- **Every merge to `master` ships to production** (rolling release). A migration must work with the
+  previous code too — never drop or rename what the current code reads in the same change
+  ([decisions.md #17](docs/agents/decisions.md#17-rolling-release-from-master-migrations-stay-backward-compatible)).
 
 ## Never commit without an explicit request
 
@@ -141,5 +149,6 @@ Read the doc **before** the task it describes.
    - a non-obvious choice made → new entry in `docs/agents/decisions.md` (next number + one line
      in the index; never renumber)
    - closed or discovered work → `docs/TODO.md` (delete closed items; git keeps the history)
-   - command, binding or setup step changed → this file and `docs/guides/development.md`
+   - command, binding or setup step changed → this file, `docs/guides/development.md` and, if it
+     affects contributors, `CONTRIBUTING.md` and the CI workflow
 3. Suggest the commit title and stop.
