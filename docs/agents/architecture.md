@@ -4,7 +4,8 @@ How Coruja is put together and what must stay true. Not a symbol list — for "w
 [features-index.md](features-index.md).
 
 **Status:** the shell (Worker with `/api/health`, placeholder Svelte root calling it through the
-typed client) and the **database schema** exist. No API, scheduler or screens yet.
+typed client), the **database schema**, and the pure **shift rules** (holidays, day kinds, hours by
+calendar month, segment validation) exist. No API, scheduler or screens yet.
 
 ## Deploy shape
 
@@ -116,7 +117,7 @@ day's kind).
 
 The database enforces ranges, enums and "only participants confirm" with CHECKs and FKs. What it
 cannot express is enforced in code: segments of a day cover the whole shift with no gaps or
-overlaps.
+overlaps (`findSegmentProblem` in `src/schedule/shifts.ts` — every write path calls it).
 
 ## Invariants
 
