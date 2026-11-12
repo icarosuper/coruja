@@ -1,0 +1,802 @@
+{
+  "version": "6",
+  "dialect": "sqlite",
+  "id": "92ef7fa1-8682-460e-9083-f04d09942c3d",
+  "prevId": "00000000-0000-0000-0000-000000000000",
+  "tables": {
+    "absences": {
+      "name": "absences",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "dev_id": {
+          "name": "dev_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "from_date": {
+          "name": "from_date",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "to_date": {
+          "name": "to_date",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "note": {
+          "name": "note",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "absences_dev_id_idx": {
+          "name": "absences_dev_id_idx",
+          "columns": [
+            "dev_id"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "absences_dev_id_devs_id_fk": {
+          "name": "absences_dev_id_devs_id_fk",
+          "tableFrom": "absences",
+          "tableTo": "devs",
+          "columnsFrom": [
+            "dev_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "absences_range_valid": {
+          "name": "absences_range_valid",
+          "value": "\"absences\".\"from_date\" <= \"absences\".\"to_date\""
+        }
+      }
+    },
+    "balance_adjustments": {
+      "name": "balance_adjustments",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "dev_id": {
+          "name": "dev_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "month_id": {
+          "name": "month_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "hours": {
+          "name": "hours",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "reason": {
+          "name": "reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "created_by_dev_id": {
+          "name": "created_by_dev_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "balance_adjustments_dev_id_idx": {
+          "name": "balance_adjustments_dev_id_idx",
+          "columns": [
+            "dev_id"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "balance_adjustments_dev_id_devs_id_fk": {
+          "name": "balance_adjustments_dev_id_devs_id_fk",
+          "tableFrom": "balance_adjustments",
+          "tableTo": "devs",
+          "columnsFrom": [
+            "dev_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "balance_adjustments_month_id_months_id_fk": {
+          "name": "balance_adjustments_month_id_months_id_fk",
+          "tableFrom": "balance_adjustments",
+          "tableTo": "months",
+          "columnsFrom": [
+            "month_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "balance_adjustments_created_by_dev_id_devs_id_fk": {
+          "name": "balance_adjustments_created_by_dev_id_devs_id_fk",
+          "tableFrom": "balance_adjustments",
+          "tableTo": "devs",
+          "columnsFrom": [
+            "created_by_dev_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "balance_adjustments_reason_valid": {
+          "name": "balance_adjustments_reason_valid",
+          "value": "\"balance_adjustments\".\"reason\" IN ('joined', 'import')"
+        }
+      }
+    },
+    "change_log": {
+      "name": "change_log",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "month_id": {
+          "name": "month_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "date": {
+          "name": "date",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "actor_dev_id": {
+          "name": "actor_dev_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "action": {
+          "name": "action",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "before": {
+          "name": "before",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "after": {
+          "name": "after",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "change_log_month_id_idx": {
+          "name": "change_log_month_id_idx",
+          "columns": [
+            "month_id"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "change_log_month_id_months_id_fk": {
+          "name": "change_log_month_id_months_id_fk",
+          "tableFrom": "change_log",
+          "tableTo": "months",
+          "columnsFrom": [
+            "month_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "change_log_actor_dev_id_devs_id_fk": {
+          "name": "change_log_actor_dev_id_devs_id_fk",
+          "tableFrom": "change_log",
+          "tableTo": "devs",
+          "columnsFrom": [
+            "actor_dev_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "confirmations": {
+      "name": "confirmations",
+      "columns": {
+        "month_id": {
+          "name": "month_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "dev_id": {
+          "name": "dev_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "confirmed_at": {
+          "name": "confirmed_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "confirmations_month_id_dev_id_month_participants_month_id_dev_id_fk": {
+          "name": "confirmations_month_id_dev_id_month_participants_month_id_dev_id_fk",
+          "tableFrom": "confirmations",
+          "tableTo": "month_participants",
+          "columnsFrom": [
+            "month_id",
+            "dev_id"
+          ],
+          "columnsTo": [
+            "month_id",
+            "dev_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "confirmations_month_id_dev_id_pk": {
+          "columns": [
+            "month_id",
+            "dev_id"
+          ],
+          "name": "confirmations_month_id_dev_id_pk"
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "days": {
+      "name": "days",
+      "columns": {
+        "date": {
+          "name": "date",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "month_id": {
+          "name": "month_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "kind": {
+          "name": "kind",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "holiday_name": {
+          "name": "holiday_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "days_month_id_idx": {
+          "name": "days_month_id_idx",
+          "columns": [
+            "month_id"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "days_month_id_months_id_fk": {
+          "name": "days_month_id_months_id_fk",
+          "tableFrom": "days",
+          "tableTo": "months",
+          "columnsFrom": [
+            "month_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "days_kind_valid": {
+          "name": "days_kind_valid",
+          "value": "\"days\".\"kind\" IN ('workday', 'day_off')"
+        }
+      }
+    },
+    "devs": {
+      "name": "devs",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "nickname": {
+          "name": "nickname",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "weight": {
+          "name": "weight",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 100
+        },
+        "active": {
+          "name": "active",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": true
+        },
+        "token_hash": {
+          "name": "token_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "deactivated_at": {
+          "name": "deactivated_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "devs_nickname_unique": {
+          "name": "devs_nickname_unique",
+          "columns": [
+            "nickname"
+          ],
+          "isUnique": true
+        },
+        "devs_token_hash_unique": {
+          "name": "devs_token_hash_unique",
+          "columns": [
+            "token_hash"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "devs_weight_not_negative": {
+          "name": "devs_weight_not_negative",
+          "value": "\"devs\".\"weight\" >= 0"
+        }
+      }
+    },
+    "month_participants": {
+      "name": "month_participants",
+      "columns": {
+        "month_id": {
+          "name": "month_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "dev_id": {
+          "name": "dev_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "weight": {
+          "name": "weight",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "month_participants_month_id_months_id_fk": {
+          "name": "month_participants_month_id_months_id_fk",
+          "tableFrom": "month_participants",
+          "tableTo": "months",
+          "columnsFrom": [
+            "month_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "month_participants_dev_id_devs_id_fk": {
+          "name": "month_participants_dev_id_devs_id_fk",
+          "tableFrom": "month_participants",
+          "tableTo": "devs",
+          "columnsFrom": [
+            "dev_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "month_participants_month_id_dev_id_pk": {
+          "columns": [
+            "month_id",
+            "dev_id"
+          ],
+          "name": "month_participants_month_id_dev_id_pk"
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "month_participants_weight_not_negative": {
+          "name": "month_participants_weight_not_negative",
+          "value": "\"month_participants\".\"weight\" >= 0"
+        }
+      }
+    },
+    "months": {
+      "name": "months",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'open'"
+        },
+        "opened_at": {
+          "name": "opened_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "closed_at": {
+          "name": "closed_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "closed_by_dev_id": {
+          "name": "closed_by_dev_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "months_closed_by_dev_id_devs_id_fk": {
+          "name": "months_closed_by_dev_id_devs_id_fk",
+          "tableFrom": "months",
+          "tableTo": "devs",
+          "columnsFrom": [
+            "closed_by_dev_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "months_status_valid": {
+          "name": "months_status_valid",
+          "value": "\"months\".\"status\" IN ('open', 'closed')"
+        }
+      }
+    },
+    "preference_rules": {
+      "name": "preference_rules",
+      "columns": {
+        "dev_id": {
+          "name": "dev_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "kind": {
+          "name": "kind",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "value": {
+          "name": "value",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "preference": {
+          "name": "preference",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "preference_rules_dev_id_devs_id_fk": {
+          "name": "preference_rules_dev_id_devs_id_fk",
+          "tableFrom": "preference_rules",
+          "tableTo": "devs",
+          "columnsFrom": [
+            "dev_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "preference_rules_dev_id_kind_value_pk": {
+          "columns": [
+            "dev_id",
+            "kind",
+            "value"
+          ],
+          "name": "preference_rules_dev_id_kind_value_pk"
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "preference_rules_value_in_range": {
+          "name": "preference_rules_value_in_range",
+          "value": "(\"preference_rules\".\"kind\" = 'weekday' AND \"preference_rules\".\"value\" BETWEEN 0 AND 6) OR (\"preference_rules\".\"kind\" = 'month_day' AND \"preference_rules\".\"value\" BETWEEN 1 AND 31)"
+        },
+        "preference_rules_preference_valid": {
+          "name": "preference_rules_preference_valid",
+          "value": "\"preference_rules\".\"preference\" IN ('good', 'avoid', 'cant')"
+        }
+      }
+    },
+    "shift_segments": {
+      "name": "shift_segments",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "date": {
+          "name": "date",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "dev_id": {
+          "name": "dev_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "from_hour": {
+          "name": "from_hour",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "to_hour": {
+          "name": "to_hour",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "shift_segments_date_idx": {
+          "name": "shift_segments_date_idx",
+          "columns": [
+            "date"
+          ],
+          "isUnique": false
+        },
+        "shift_segments_dev_id_idx": {
+          "name": "shift_segments_dev_id_idx",
+          "columns": [
+            "dev_id"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "shift_segments_date_days_date_fk": {
+          "name": "shift_segments_date_days_date_fk",
+          "tableFrom": "shift_segments",
+          "tableTo": "days",
+          "columnsFrom": [
+            "date"
+          ],
+          "columnsTo": [
+            "date"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "shift_segments_dev_id_devs_id_fk": {
+          "name": "shift_segments_dev_id_devs_id_fk",
+          "tableFrom": "shift_segments",
+          "tableTo": "devs",
+          "columnsFrom": [
+            "dev_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "shift_segments_hours_valid": {
+          "name": "shift_segments_hours_valid",
+          "value": "\"shift_segments\".\"from_hour\" >= 0 AND \"shift_segments\".\"from_hour\" < \"shift_segments\".\"to_hour\" AND \"shift_segments\".\"to_hour\" <= 24"
+        }
+      }
+    }
+  },
+  "views": {},
+  "enums": {},
+  "_meta": {
+    "schemas": {},
+    "tables": {},
+    "columns": {}
+  },
+  "internal": {
+    "indexes": {}
+  }
+}

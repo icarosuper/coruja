@@ -13,7 +13,7 @@ sheet. It replaces the monthly meeting where the sheet was filled by hand.
 
 Infra and Sustentação are out of scope: they keep using the sheet directly.
 
-**Status:** skeleton only. No tables, no screens, no scheduler yet — see [docs/TODO.md](docs/TODO.md).
+**Status:** skeleton + database schema. No API, screens or scheduler yet — see [docs/TODO.md](docs/TODO.md).
 Screens and visual design are decided with the user **before** they are coded.
 
 ## Commands
@@ -52,8 +52,9 @@ SPA + Vite (`@cloudflare/vite-plugin`) · TypeScript 6 · bun · Biome · Vitest
 - **The manager's sheet is not ours.** We only fill the Banking cells, through a generated Office
   Script that locates columns by date and team label, never by fixed position
   ([#4](docs/agents/decisions.md#4-excel-is-filled-by-a-generated-office-script)).
-- **Tokens are stored hashed.** A dev token or the team password is never logged or returned after
-  creation ([#3](docs/agents/decisions.md#3-auth-is-one-token-per-dev-plus-a-team-password)).
+- **Secrets stay secret.** Dev tokens are stored hashed; the team password is a Worker secret
+  (`TEAM_PASSWORD`). Neither is ever logged or returned after creation
+  ([#3](docs/agents/decisions.md#3-auth-is-one-token-per-dev-plus-a-team-password)).
 - **Do not hand-edit generated files:** `worker-configuration.d.ts` (`bun run cf-typegen`) and
   the SQL in `migrations/` (`bun run db:generate`).
 - **Real names stay out of the repo.** Devs are identified by nickname only; no CSV/XLSX from the

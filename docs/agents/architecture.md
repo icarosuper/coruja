@@ -3,9 +3,8 @@
 How Coruja is put together and what must stay true. Not a symbol list — for "where is X" see
 [features-index.md](features-index.md).
 
-**Status:** only the shell exists (Worker with `/api/health`, placeholder Svelte root calling it
-through the typed client, Drizzle wired to an empty schema). The domain below is the agreed design;
-the tables are not written yet.
+**Status:** the shell (Worker with `/api/health`, placeholder Svelte root calling it through the
+typed client) and the **database schema** exist. No API, scheduler or screens yet.
 
 ## Deploy shape
 
@@ -50,18 +49,19 @@ Christi). Carnaval is an optional day off, not a holiday. Dates are computed in 
 from Easter), no external API. Any user can flip any day between 15h and 24h on the month's
 calendar ([decisions.md #14](decisions.md#14-holidays-are-sao-paulo-citys-computed-in-code-and-overridable)).
 
-### Profiles (recurring preferences)
+### Profiles
 
-Each dev has a profile with a **participation weight** (100% by default; the share of hours they
-should take, [decisions.md #18](decisions.md#18-each-dev-has-a-participation-weight)) and recurring
-rules, valid for every month:
+Each dev has a profile with:
 
-- per weekday: `good` / `neutral` / `avoid` / `cant`
-- per day of month (e.g. "the 5th"): `prefer` / `cant`
+- a **participation weight** (100% by default; the share of hours they should take,
+  [decisions.md #18](decisions.md#18-each-dev-has-a-participation-weight));
+- recurring rules **per weekday** and **per day of month** (e.g. "the 5th"), all on one scale:
+  `good` / `avoid` / `cant`, no rule = neutral;
+- **planned absences**: date ranges known in advance (vacation, a trip), treated as `cant` when a
+  month opens.
 
-One-off exceptions (vacation, a trip) are **not** profile rules: they are edits on that month's
-calendar. A profile change **never** rewrites a month that is already open — it applies to the
-next suggestion ([decisions.md #5](decisions.md#5-preferences-are-recurring-profile-rules-month-exceptions-are-calendar-edits)).
+Something that comes up after a month opened is an edit on that month's calendar. A profile change **never** rewrites a month that is already open — it applies to the
+next suggestion ([decisions.md #5](decisions.md#5-preferences-are-profile-rules-and-planned-absences-open-month-exceptions-are-calendar-edits)).
 
 ### Month lifecycle
 
@@ -91,6 +91,32 @@ deactivated, never deleted. The starting balance is imported
 once from the November 2026 sheet export (CSV, Windows-1252), Banking column only
 ([decisions.md #16](decisions.md#16-the-starting-balance-comes-from-the-november-2026-csv)). The manager's 80h/34h targets and
 "compensação" are **not** modeled ([decisions.md #9](decisions.md#9-manager-targets-and-compensacao-are-out-of-scope)).
+
+## Tables
+
+Defined in `src/worker/db/schema.ts` (first migration: `migrations/0000_init.sql`).
+
+| Table | Holds |
+|---|---|
+| `devs` | nickname, participation weight, active flag, token hash. Never deleted |
+| `preference_rules` | profile rules: (`weekday` 0–6 \| `month_day` 1–31) × (`good` \| `avoid` \| `cant`) |
+| `absences` | planned absences, inclusive date ranges |
+| `months` | `YYYY-MM`, `open`/`closed`, who closed |
+| `month_participants` | devs of a month with the weight frozen at opening |
+| `days` | one per date = that day's shift; `workday` (15h) / `day_off` (24h), holiday name |
+| `shift_segments` | who covers which hours of a shift (offsets from the shift start) |
+| `confirmations` | per month and dev; composite FK to `month_participants` |
+| `balance_adjustments` | hours added to a balance outside shifts (`joined`, `import`) |
+| `change_log` | every roster change, `before`/`after` as JSON |
+
+**Not stored, always computed:** hours per dev per month (from segments, by calendar hour),
+balances (`Σ (actual − expected share) + adjustments`), "ready for export" (all participants
+confirmed and no day without segments), holidays (computed when a month opens, then stored as the
+day's kind).
+
+The database enforces ranges, enums and "only participants confirm" with CHECKs and FKs. What it
+cannot express is enforced in code: segments of a day cover the whole shift with no gaps or
+overlaps.
 
 ## Invariants
 

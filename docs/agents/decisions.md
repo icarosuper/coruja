@@ -12,7 +12,7 @@ never renumber.
 - [**#2** — One shift per day, anchored on its start; every hour weighs the same](#2-one-shift-per-day-anchored-on-its-start-every-hour-weighs-the-same)
 - [**#3** — Auth is one token per dev plus a team password](#3-auth-is-one-token-per-dev-plus-a-team-password)
 - [**#4** — Excel is filled by a generated Office Script](#4-excel-is-filled-by-a-generated-office-script)
-- [**#5** — Preferences are recurring profile rules; month exceptions are calendar edits](#5-preferences-are-recurring-profile-rules-month-exceptions-are-calendar-edits)
+- [**#5** — Preferences are profile rules and planned absences; open-month exceptions are calendar edits](#5-preferences-are-profile-rules-and-planned-absences-open-month-exceptions-are-calendar-edits)
 - [**#6** — Scheduler: "can't" is hard, everything else is ordered goals](#6-scheduler-cant-is-hard-everything-else-is-ordered-goals)
 - [**#7** — Months open on the 20th with a suggestion and close manually](#7-months-open-on-the-20th-with-a-suggestion-and-close-manually)
 - [**#8** — Everything runs in one Cloudflare Worker with D1](#8-everything-runs-in-one-cloudflare-worker-with-d1)
@@ -62,13 +62,15 @@ the balance.
 There are no accounts, emails or OAuth. Each dev has a personal token, used by the web app (saved
 in the browser once) and by the MCP server (sent by Claude Code). The token identifies the dev, so
 it is both authentication and identity. A shared **team password** guards admin actions only:
-adding/removing devs and issuing/resetting tokens. Tokens and the team password are stored hashed
-and shown once.
+adding/removing devs and issuing/resetting tokens. Dev tokens are stored hashed and shown once.
+The team password is a **Worker secret** (`TEAM_PASSWORD`), not a table: changing it is rare and
+done with `wrangler secret put` by the repo owner.
 
 Considered: Cloudflare Zero Trust in front of the app — dropped, since it does not tell the app
 *which* dev is calling and complicates MCP access.
 
-**Don't "fix" by:** adding a login provider, or storing tokens in plain text "to show them again".
+**Don't "fix" by:** adding a login provider, storing tokens in plain text "to show them again", or
+moving the team password into the database.
 
 ### 4. Excel is filled by a generated Office Script
 
@@ -83,14 +85,27 @@ VBA — desktop only and needs a macro-enabled file.
 
 **Don't "fix" by:** hard-coding column indexes in the script, or overwriting non-Banking cells.
 
-### 5. Preferences are recurring profile rules; month exceptions are calendar edits
+### 5. Preferences are profile rules and planned absences; open-month exceptions are calendar edits
 
-Devs set rules once in their profile (per weekday and per day of month) and do not fill anything
-per month. A one-off absence is handled by editing that month's calendar. Changing the profile
-while a month is open does not touch that month: it would silently undo other devs' confirmations.
+Devs set rules once in their profile and do not fill anything per month. Two kinds of rule, one
+scale:
 
-**Don't "fix" by:** re-running the scheduler on the open month when a profile changes, or adding
-one-off dates to the profile.
+- **per weekday** and **per day of month**, each `good` / `avoid` / `cant` (no rule = neutral).
+  `avoid` exists so people do not mark `cant` for days they merely dislike, which would make
+  months impossible to fill.
+- **planned absences**: date ranges (vacation, a trip) known before the month opens. Stored apart
+  from the rules because they are periods, not recurring patterns; the scheduler treats them as
+  `cant`.
+
+Something that comes up after the month opened is an edit on that month's calendar. Changing the
+profile (rules, absences or weight) while a month is open does not touch that month: it would
+silently undo other devs' confirmations.
+
+Considered and left out: holidays as a rule category, "1st weekend of the month"/alternate weeks,
+caps like "at most 2 weekends a month" (participation weight and weekend spread cover it).
+
+**Don't "fix" by:** re-running the scheduler on the open month when a profile changes, or giving
+day-of-month rules a different scale from weekday rules.
 
 ### 6. Scheduler: "can't" is hard, everything else is ordered goals
 
@@ -111,13 +126,17 @@ fill a gap.
 ### 7. Months open on the 20th with a suggestion and close manually
 
 A cron opens the next month on the 20th and generates the suggestion right away — confirming makes
-no sense with nothing on the calendar. Each dev confirms or edits; an edit resets the confirmation
-of every dev whose shifts changed. When everyone has confirmed, whoever is last runs the export.
-The month is closed manually by whoever exported; there is no automatic deadline. Anyone can edit
-and close (no admin role for this). Swaps after the export can be recorded on the closed month
-(#20).
+no sense with nothing on the calendar. **Every participant of the month confirms**, including a
+dev who got no shift. An edit resets the confirmation of every dev whose shifts changed. When
+everyone has confirmed, whoever is last runs the export.
 
-**Don't "fix" by:** auto-closing at a deadline.
+The month is closed manually; there is no automatic deadline. Anyone can edit and close (no admin
+role for this). **Closing does not require every confirmation**: if some are pending, the user sees
+a warning listing who has not confirmed and closes anyway if they want. Swaps after the export can
+be recorded on the closed month (#20).
+
+**Don't "fix" by:** auto-closing at a deadline, or blocking the close button on pending
+confirmations.
 
 ### 8. Everything runs in one Cloudflare Worker with D1
 
@@ -216,9 +235,18 @@ the app's numbers are the ones the manager sees, and the CSV import uses the sam
 ### 16. The starting balance comes from the November 2026 CSV
 
 The first balance is imported from the November 2026 sheet export (the one this project was
-planned from): Banking column, hours counted per cell, nicknames as in the sheet. The month was
-still in progress when it was exported, so it reflects the planned roster, not hours actually
-worked; that is accepted. Earlier months are not imported.
+planned from) as a **full, closed month**: days, segments (Banking column, one cell = one hour,
+nicknames as in the sheet) and participants with their weights. The balance then comes out of the
+same formula as every other month, and the app knows who holds the Nov 30 shift that runs into
+December. The 00:00–08:00 hours of Nov 1 belong to the Oct 31 shift, which is not in the app: they
+enter as a `balance_adjustments` row with reason `import`.
+
+Order matters: create the devs and set their weights **before** importing, because the month's
+participant weights are stored at import time.
+
+The month was still in progress when it was exported, so it reflects the planned roster, not hours
+actually worked; that is accepted (later swaps can be synced, #23). Earlier months are not
+imported.
 
 **Don't "fix" by:** importing the summary table's HORAS/compensação columns instead of counting the
 grid.
@@ -282,8 +310,9 @@ entry, not one per shift.
 ### 22. A month with an unassigned day is never "ready"
 
 When nobody can take a day, the scheduler leaves it unassigned and flagged (#6). The month cannot
-become ready for export until every day has someone; whoever takes the day does it through a normal
-edit.
+become ready and the Office Script is not generated until every day has someone; whoever takes the
+day does it through a normal edit. Closing the month (#7) is still allowed, with the empty days in
+the warning.
 
 **Don't "fix" by:** letting the export run with empty Banking cells, or auto-assigning a `cant` day.
 
