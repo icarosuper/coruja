@@ -5,7 +5,8 @@ How Coruja is put together and what must stay true. Not a symbol list — for "w
 
 **Status:** the shell (Worker with `/api/health`, placeholder Svelte root calling it through the
 typed client), the **database schema**, and the pure **shift rules** (holidays, day kinds, hours by
-calendar month, segment validation) exist. No API, scheduler or screens yet.
+calendar month, segment validation) exist, plus the **sheet reader** (Banking roster out of the
+sheet exported as CSV). No API, scheduler or screens yet.
 
 ## Deploy shape
 
@@ -83,6 +84,23 @@ There is no automatic deadline: the month closes when someone closes it. A month
 unassigned day never becomes ready. Every change to a shift, in any state, goes to the change log
 ([decisions.md #21](decisions.md#21-every-roster-change-is-logged)).
 
+### Reading the sheet (CSV)
+
+`readSheetRoster` (`src/sheet/roster.ts`) turns the sheet exported as CSV into the month's days,
+shift segments by nickname, the hours of day 1 that belong to the previous month's last shift, and
+per-day problems. It feeds both the starting-balance import (#16) and the swap sync (#23). It finds
+columns by date and by the "Banking" label, accepts month-first or day-first dates and `,` or `;`.
+
+- **Day kind comes from the sheet:** a day whose office hours (09:00–18:00) say "Expediente" is a
+  workday, any other is a 24h day. This keeps a day someone flipped by hand as the sheet has it.
+- **The last shift is cut off:** its hours on day 1 of the next month are not in the file, so the
+  whole shift goes to whoever holds its last visible hour.
+- **Problems, not guesses:** a shift with some hours named and others empty (`partly_assigned`) or a
+  workday with names during office hours (`names_in_office_hours`) is reported; callers refuse to
+  write a month with problems. A shift with no names at all is simply unassigned.
+
+Checked against the November 2026 export: every dev's hours match the sheet's HORAS column.
+
 ### Hour balance
 
 Each month's hours per dev are kept, and the difference to each dev's **expected share** (by
@@ -134,4 +152,6 @@ overlaps (`findSegmentProblem` in `src/schedule/shifts.ts` — every write path 
   hours from the previous month's roster, and the hour count splits the shift between both months.
 - **Holidays turn a 15h shift into a 24h one.** The sheet treated Nov 2 and Nov 20 as weekend days.
   The day kind matters for both the hours and the export.
-- **The sheet's encoding is Windows-1252** when exported to CSV.
+- **The sheet's encoding is Windows-1252** when exported to CSV. Decode the bytes before
+  `readSheetRoster` (in the browser, `new TextDecoder('windows-1252')`), or nicknames like "Ícaro"
+  arrive broken and match no dev.

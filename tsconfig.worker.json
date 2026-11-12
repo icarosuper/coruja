@@ -4,5 +4,12 @@
     "lib": ["ES2023"],
     "types": ["./worker-configuration.d.ts"]
   },
-  "include": ["src/worker", "src/schedule", "vite.config.ts", "vitest.config.ts", "drizzle.config.ts"]
+  "include": [
+    "src/worker",
+    "src/schedule",
+    "src/sheet",
+    "vite.config.ts",
+    "vitest.config.ts",
+    "drizzle.config.ts"
+  ]
 }

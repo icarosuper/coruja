@@ -17,6 +17,11 @@ export function shiftLength(kind: DayKind): number {
   return SHIFT_LENGTH_HOURS[kind]
 }
 
+/** Hour of the day (0–23) the shift starts. Every shift ends at 09:00 the next day. */
+export function shiftStartHour(kind: DayKind): number {
+  return SHIFT_START_HOUR[kind]
+}
+
 export type CalendarDay = { date: IsoDate; kind: DayKind; holidayName: string | null }
 
 /** The month's days as they are when it opens: weekends and São Paulo holidays are 24h days. */
