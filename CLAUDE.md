@@ -13,7 +13,7 @@ sheet. It replaces the monthly meeting where the sheet was filled by hand.
 
 Infra and Sustentação are out of scope: they keep using the sheet directly.
 
-**Status:** skeleton, database schema, shift rules, scheduler and the sheet CSV reader. No API or screens yet — see [docs/TODO.md](docs/TODO.md).
+**Status:** database schema, shift rules, scheduler, sheet CSV reader and the API. No screens yet — see [docs/TODO.md](docs/TODO.md).
 Screens and visual design are decided with the user **before** they are coded.
 
 ## Commands

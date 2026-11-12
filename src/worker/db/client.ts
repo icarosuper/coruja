@@ -5,3 +5,5 @@ import * as schema from './schema'
 export function createDatabase(d1: Bindings['DB']) {
   return drizzle(d1, { schema })
 }
+
+export type Database = ReturnType<typeof createDatabase>

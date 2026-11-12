@@ -3,10 +3,10 @@
 How Coruja is put together and what must stay true. Not a symbol list — for "where is X" see
 [features-index.md](features-index.md).
 
-**Status:** the shell (Worker with `/api/health`, placeholder Svelte root calling it through the
-typed client), the **database schema**, and the pure **shift rules** (holidays, day kinds, hours by
-calendar month, segment validation), the **scheduler** and the **sheet reader** (Banking roster
-out of the sheet exported as CSV) exist. No API or screens yet.
+**Status:** the **database schema**, the pure **shift rules** (holidays, day kinds, hours by
+calendar month, segment validation), the **scheduler**, the **sheet reader** (Banking roster out of
+the sheet exported as CSV) and the **API** (auth, devs, profile, months: open, edit, confirm, close,
+import, sheet diff and sync) exist. No screens yet: the Svelte root is a placeholder.
 
 ## Deploy shape
 
@@ -122,6 +122,40 @@ once from the November 2026 sheet export (CSV, Windows-1252), Banking column onl
 ([decisions.md #16](decisions.md#16-the-starting-balance-comes-from-the-november-2026-csv)). The manager's 80h/34h targets and
 "compensação" are **not** modeled ([decisions.md #9](decisions.md#9-manager-targets-and-compensacao-are-out-of-scope)).
 
+The expected share is of the hours **actually assigned** in the month, so a month's balances add
+up to zero. A dev assigned by an edit who is not a participant of the month (joined after it opened,
+weight 0) has an expected share of zero
+([decisions.md #25](decisions.md#25-balances-are-shares-of-assigned-hours-outsiders-expect-zero)).
+`monthHoursByDev` (`src/schedule/balance.ts`) does one month; `loadBalances`
+(`src/worker/store/balances.ts`) adds up every month and the adjustments.
+
+## API
+
+Hono, under `/api`, in `src/worker/`: `routes/` (HTTP: auth middleware, validation, status codes)
+call `store/` (reads and writes in D1, the domain rules in `src/schedule/` and `src/sheet/`).
+
+- **Auth** (decisions #3, `src/worker/auth.ts`): `Authorization: Bearer <token>` identifies the dev
+  (`context.var.dev`); a deactivated dev's token stops working. Admin routes take the team password
+  in `X-Team-Password` instead, without a token (that is how the first dev is created). Tokens are
+  `coruja_` + 32 random bytes, stored as SHA-256 hex; the team password is compared by digest.
+- **Admin routes** (team password): add a dev (returns the token, once), rename or (de)activate,
+  replace a token, import a month from the sheet.
+- **Errors**: `{ error: code, ...details }` with a stable English code (`month_closed`,
+  `invalid_segments`, `unknown_nicknames`...). Store code throws `ApiError`; `app.onError` answers
+  it. Invalid input is 400 `invalid_request` with zod's `issues`.
+- **Writes are atomic**: one D1 batch per operation (`runBatch`), multi-row inserts chunked under
+  D1's 100-parameter limit (`insertRows`).
+- **Opening a month** runs the scheduler inside the request (a few ms of CPU for one team).
+  Participants = active devs with weight above 0, weights frozen. Until the cron exists, any dev
+  opens a month by hand; a month can only be added after the latest one.
+- **Editing days** (`applyDayChanges`) is the single write path for calendar edits and sheet syncs:
+  it validates segments (`findSegmentProblem`), skips days left as they were, logs each changed day,
+  and in an open month removes the confirmations of devs whose hours changed. A new day kind
+  changes the hours of everyone on that day.
+- **Sheet**: the web app decodes the CSV (Windows-1252) and sends it as text in JSON. Import and
+  diff refuse unreadable files, sheet problems and nicknames that are not devs (matched ignoring
+  case). The diff's `after` is exactly what `POST /months/:month/changes` takes.
+
 ## Tables
 
 Defined in `src/worker/db/schema.ts` (first migration: `migrations/0000_init.sql`).
@@ -137,7 +171,7 @@ Defined in `src/worker/db/schema.ts` (first migration: `migrations/0000_init.sql
 | `shift_segments` | who covers which hours of a shift (offsets from the shift start) |
 | `confirmations` | per month and dev; composite FK to `month_participants` |
 | `balance_adjustments` | hours added to a balance outside shifts (`joined`, `import`) |
-| `change_log` | every roster change, `before`/`after` as JSON |
+| `change_log` | every roster change (and confirm, close, import), `before`/`after` as JSON |
 
 **Not stored, always computed:** hours per dev per month (from segments, by calendar hour),
 balances (`Σ (actual − expected share) + adjustments`), "ready for export" (all participants

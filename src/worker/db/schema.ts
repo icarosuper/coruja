@@ -26,6 +26,7 @@ export const CHANGE_LOG_ACTIONS = [
   'sync',
   'confirm',
   'close',
+  'import',
 ] as const
 
 const createdAt = () =>

@@ -5,7 +5,7 @@ Choices that look wrong (or arbitrary) but are intentional. Read before "fixing"
 ## Index
 
 Entries are **self-contained**: read only the one you were pointed at. Cite by **anchor**, never by
-line number. A new entry takes the **next number** (highest today is **#24**) plus one line here;
+line number. A new entry takes the **next number** (highest today is **#25**) plus one line here;
 never renumber.
 
 - [**#1** — Only the dev team's Banking column; devs are nicknames](#1-only-the-dev-teams-banking-column-devs-are-nicknames)
@@ -32,6 +32,7 @@ never renumber.
 - [**#22** — A month with an unassigned day is never "ready"](#22-a-month-with-an-unassigned-day-is-never-ready)
 - [**#23** — Swaps come back from the sheet as a CSV diff (and through MCP)](#23-swaps-come-back-from-the-sheet-as-a-csv-diff-and-through-mcp)
 - [**#24** — The scheduler minimizes one cost; conflicting rules resolve to the most restrictive](#24-the-scheduler-minimizes-one-cost-conflicting-rules-resolve-to-the-most-restrictive)
+- [**#25** — Balances are shares of assigned hours; outsiders expect zero](#25-balances-are-shares-of-assigned-hours-outsiders-expect-zero)
 
 ---
 
@@ -240,7 +241,7 @@ planned from) as a **full, closed month**: days, segments (Banking column, one c
 nicknames as in the sheet) and participants with their weights. The balance then comes out of the
 same formula as every other month, and the app knows who holds the Nov 30 shift that runs into
 December. The 00:00–08:00 hours of Nov 1 belong to the Oct 31 shift, which is not in the app: they
-enter as a `balance_adjustments` row with reason `import`.
+enter as `balance_adjustments` rows with reason `import`, one per participant (see #25).
 
 Order matters: create the devs and set their weights **before** importing, because the month's
 participant weights are stored at import time.
@@ -349,3 +350,21 @@ When a weekday rule and a day-of-month rule hit the same date, the **more restri
 
 **Don't "fix" by:** making a lower goal a strict tie-breaker of the one above, adding randomness to
 the search, or letting a `good` rule override an `avoid`/`cant` on the same date.
+
+### 25. Balances are shares of assigned hours; outsiders expect zero
+
+A dev's expected hours in a month are their weight's share of the hours **actually assigned** that
+month, not of every shift hour. A month's balances then always add up to zero: an unassigned day
+(#22) does not put the whole team in debt.
+
+Any dev can be put on a day by an edit, not only the month's participants (fixed when it opens).
+That covers a dev who joined after the month opened, or one with weight 0 taking a swap. Their
+expected share is zero, so all their hours that month become balance, and they are not asked to
+confirm. The month view lists them apart, as `outsiders`.
+
+The November import (#16) cannot store the Oct 31 shift, whose last 9 hours fall on Nov 1. Instead,
+each participant gets an `import` adjustment of *their hours in it − their share of its hours*:
+exactly what they would get if that shift were stored, so the balances still add up to zero.
+
+**Don't "fix" by:** computing the share over every shift hour, refusing edits that assign a
+non-participant, or adding the Oct 31 hours to only the dev who worked them.

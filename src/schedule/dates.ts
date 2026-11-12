@@ -45,3 +45,8 @@ export function daysOfMonth(month: MonthId): IsoDate[] {
 export function previousMonth(month: MonthId): MonthId {
   return monthOf(addDays(`${month}-01`, -1))
 }
+
+export function nextMonth(month: MonthId): MonthId {
+  const lastDay = daysOfMonth(month).at(-1) ?? `${month}-01`
+  return monthOf(addDays(lastDay, 1))
+}

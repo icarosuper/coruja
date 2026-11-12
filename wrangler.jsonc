@@ -4,7 +4,7 @@
   "main": "src/worker/index.ts",
   "compatibility_date": "2026-11-01",
   "assets": {
-    // The React app is a SPA; /api/* always reaches the Worker first.
+    // The Svelte app is a SPA; /api/* always reaches the Worker first.
     "not_found_handling": "single-page-application",
     "run_worker_first": ["/api/*"]
   },
@@ -17,6 +17,7 @@
       "migrations_dir": "migrations"
     }
   ],
+  // TEAM_PASSWORD is a secret: `.dev.vars` locally, `wrangler secret put TEAM_PASSWORD` in production.
   "observability": {
     "enabled": true
   }
