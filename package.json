@@ -1,0 +1,37 @@
+{
+  "name": "coruja",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite dev",
+    "build": "vite build",
+    "preview": "vite preview",
+    "deploy": "vite build && wrangler deploy",
+    "cf-typegen": "wrangler types",
+    "typecheck": "svelte-check --tsconfig ./tsconfig.web.json --fail-on-warnings && tsc -p tsconfig.worker.json --noEmit",
+    "check": "biome check",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "verify": "bun run typecheck && bun run check && bun run test",
+    "db:migrate:local": "wrangler d1 migrations apply coruja --local",
+    "db:migrate:remote": "wrangler d1 migrations apply coruja --remote",
+    "db:generate": "drizzle-kit generate"
+  },
+  "dependencies": {
+    "drizzle-orm": "^0.45.4",
+    "hono": "^4.13.18"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.6.7",
+    "@cloudflare/vite-plugin": "^1.69.1",
+    "@cloudflare/workers-types": "^5.20261112.1",
+    "@sveltejs/vite-plugin-svelte": "^7.3.1",
+    "drizzle-kit": "^0.31.11",
+    "svelte": "^5.57.3",
+    "svelte-check": "^4.7.8",
+    "typescript": "~6",
+    "vite": "^8.3.8",
+    "vitest": "^5.1.0",
+    "wrangler": "^4.161.0"
+  }
+}
