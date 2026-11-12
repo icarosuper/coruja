@@ -9,6 +9,8 @@ Feature → files. Update in the same change that adds, moves or removes somethi
 | Default day kinds of a month (15h/24h) | `defaultCalendar` — `src/schedule/shifts.ts` |
 | Hours by calendar month | `segmentHoursByMonth`, `monthlyHoursByDev`, `monthTotalHours` — `src/schedule/shifts.ts` |
 | Segment coverage check (no gap/overlap) | `findSegmentProblem` — `src/schedule/shifts.ts` |
+| Profile rules → preference on a date | `preferenceOn` — `src/schedule/preferences.ts` |
+| Suggested roster for a month | `suggestRoster` — `src/schedule/scheduler.ts`; try it: `bun run suggest` (`scripts/suggest-roster.ts`) |
 | Read the Banking roster from the sheet CSV | `readSheetRoster` — `src/sheet/roster.ts` (CSV: `src/sheet/csv.ts`) |
 
 Nothing else exists yet. Planned features and their order: [docs/TODO.md](../TODO.md).

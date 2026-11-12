@@ -8,14 +8,15 @@
     "preview": "vite preview",
     "deploy": "vite build && wrangler deploy",
     "cf-typegen": "wrangler types",
-    "typecheck": "svelte-check --tsconfig ./tsconfig.web.json --fail-on-warnings && tsc -p tsconfig.worker.json --noEmit",
+    "typecheck": "svelte-check --tsconfig ./tsconfig.web.json --fail-on-warnings && tsc -p tsconfig.worker.json --noEmit && tsc -p tsconfig.scripts.json --noEmit",
     "check": "biome check",
     "test": "vitest run",
     "test:watch": "vitest",
     "verify": "bun run typecheck && bun run check && bun run test",
     "db:migrate:local": "wrangler d1 migrations apply coruja --local",
     "db:migrate:remote": "wrangler d1 migrations apply coruja --remote",
-    "db:generate": "drizzle-kit generate"
+    "db:generate": "drizzle-kit generate",
+    "suggest": "bun scripts/suggest-roster.ts"
   },
   "dependencies": {
     "drizzle-orm": "^0.45.4",
@@ -26,6 +27,7 @@
     "@cloudflare/vite-plugin": "^1.69.1",
     "@cloudflare/workers-types": "^5.20261112.1",
     "@sveltejs/vite-plugin-svelte": "^7.3.1",
+    "@types/bun": "^1.4.4",
     "drizzle-kit": "^0.31.11",
     "svelte": "^5.57.3",
     "svelte-check": "^4.7.8",

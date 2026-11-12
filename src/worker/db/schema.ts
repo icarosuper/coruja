@@ -9,14 +9,13 @@ import {
   sqliteTable,
   text,
 } from 'drizzle-orm/sqlite-core'
+import { PREFERENCE_RULE_KINDS, PREFERENCES } from '../../schedule/preferences'
 import { DAY_KINDS } from '../../schedule/shifts'
 
 // Data model: docs/agents/architecture.md ("Domain") and decisions #2, #5, #7, #16, #18–#22.
 // Derived values are NOT stored: hours per dev, balances and "ready for export" are computed.
 
-export const PREFERENCE_RULE_KINDS = ['weekday', 'month_day'] as const
-export const PREFERENCES = ['good', 'avoid', 'cant'] as const
-export { DAY_KINDS }
+export { DAY_KINDS, PREFERENCE_RULE_KINDS, PREFERENCES }
 export const MONTH_STATUSES = ['open', 'closed'] as const
 export const BALANCE_ADJUSTMENT_REASONS = ['joined', 'import'] as const
 export const CHANGE_LOG_ACTIONS = [

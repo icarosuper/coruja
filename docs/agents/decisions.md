@@ -5,7 +5,7 @@ Choices that look wrong (or arbitrary) but are intentional. Read before "fixing"
 ## Index
 
 Entries are **self-contained**: read only the one you were pointed at. Cite by **anchor**, never by
-line number. A new entry takes the **next number** (highest today is **#23**) plus one line here;
+line number. A new entry takes the **next number** (highest today is **#24**) plus one line here;
 never renumber.
 
 - [**#1** — Only the dev team's Banking column; devs are nicknames](#1-only-the-dev-teams-banking-column-devs-are-nicknames)
@@ -31,6 +31,7 @@ never renumber.
 - [**#21** — Every roster change is logged](#21-every-roster-change-is-logged)
 - [**#22** — A month with an unassigned day is never "ready"](#22-a-month-with-an-unassigned-day-is-never-ready)
 - [**#23** — Swaps come back from the sheet as a CSV diff (and through MCP)](#23-swaps-come-back-from-the-sheet-as-a-csv-diff-and-through-mcp)
+- [**#24** — The scheduler minimizes one cost; conflicting rules resolve to the most restrictive](#24-the-scheduler-minimizes-one-cost-conflicting-rules-resolve-to-the-most-restrictive)
 
 ---
 
@@ -115,7 +116,7 @@ unassigned and flag it. Goals, from most to least important:
 1. balance hours across devs **in proportion to their participation weight** (#18), including the
    balance carried over from previous months;
 2. spread weekend/holiday shifts across devs;
-3. honor `good`/`prefer`, stay away from `avoid`;
+3. take `good` days, stay away from `avoid` days;
 4. avoid back-to-back shifts for the same dev (allowed when needed).
 
 "One dev per shift" is not absolute either (#2), but the scheduler does not optimize for splits.
@@ -331,3 +332,20 @@ Scripts availability is confirmed.
 
 **Don't "fix" by:** applying an uploaded CSV without the diff confirmation, writing a second CSV
 parser, or giving the MCP its own write path that bypasses the change log.
+
+### 24. The scheduler minimizes one cost; conflicting rules resolve to the most restrictive
+
+The goals of #6 are not applied one after another: each becomes a cost (squared hours away from the
+weighted share, squared weekend/holiday shifts away from the share, a penalty per `avoid` day, a
+bonus per `good` day, a penalty per back-to-back pair) and the suggestion is the roster with the
+lowest total that a greedy first pass plus local search (move one day, swap two days) finds. The
+order of #6 comes from the size of the costs: moving a 15h shift between two balanced devs costs
+more than any single preference, so a preference only decides between rosters with about the same
+hours. Strict priority would make preferences almost never matter, since nearly any change moves
+hours a little. The search is deterministic, so the same input gives the same roster.
+
+When a weekday rule and a day-of-month rule hit the same date, the **more restrictive** one wins
+(`cant` > `avoid` > `good`); a planned absence is `cant`.
+
+**Don't "fix" by:** making a lower goal a strict tie-breaker of the one above, adding randomness to
+the search, or letting a `good` rule override an `avoid`/`cant` on the same date.

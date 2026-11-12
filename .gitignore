@@ -7,3 +7,6 @@ dist/
 worker-configuration.d.ts
 *.csv
 *.xlsx
+
+# Local inputs with real names (scripts/suggest-roster.ts)
+*.local.json

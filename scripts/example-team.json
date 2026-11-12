@@ -1,0 +1,15 @@
+{
+  "month": "2026-12",
+  "previousDay": { "date": "2026-11-30", "kind": "workday", "nickname": "kite" },
+  "dayKinds": { "2026-12-24": "day_off", "2026-12-31": "day_off" },
+  "devs": [
+    { "nickname": "owl", "cant": ["sun"], "good": ["thu"] },
+    { "nickname": "hawk", "avoid": ["sat", "sun"] },
+    { "nickname": "kite", "balance": 12, "absences": [["2026-12-20", "2026-12-31"]] },
+    { "nickname": "wren", "cant": [24, 25] },
+    { "nickname": "lark", "good": ["fri", "sat"] },
+    { "nickname": "swift", "balance": -8 },
+    { "nickname": "finch", "weight": 50, "cant": ["mon", "tue"] },
+    { "nickname": "robin", "weight": 30 }
+  ]
+}

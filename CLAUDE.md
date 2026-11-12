@@ -13,7 +13,7 @@ sheet. It replaces the monthly meeting where the sheet was filled by hand.
 
 Infra and Sustentação are out of scope: they keep using the sheet directly.
 
-**Status:** skeleton, database schema, shift rules and the sheet CSV reader. No API, screens or scheduler yet — see [docs/TODO.md](docs/TODO.md).
+**Status:** skeleton, database schema, shift rules, scheduler and the sheet CSV reader. No API or screens yet — see [docs/TODO.md](docs/TODO.md).
 Screens and visual design are decided with the user **before** they are coded.
 
 ## Commands
@@ -23,12 +23,13 @@ bun install
 bun run cf-typegen          # regenerate worker-configuration.d.ts after editing wrangler.jsonc
 bun run dev                 # Vite + Worker (workerd) + local D1, http://localhost:5173
 bun run build
-bun run typecheck           # svelte-check (web) + tsc (worker)
+bun run typecheck           # svelte-check (web) + tsc (worker, scripts)
 bun run check               # biome check (lint + format); add --write to fix
 bun run test                # Vitest
 bun run verify              # typecheck + check + test
 bun run db:generate         # new SQL migration from src/worker/db/schema.ts (drizzle-kit)
 bun run db:migrate:local    # apply migrations/ to the local D1
+bun run suggest <team.json> # print the scheduler's suggestion for a team file (scripts/example-team.json)
 bun run deploy              # build + wrangler deploy (needs the real D1 id, see the guide)
 ```
 

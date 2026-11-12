@@ -5,8 +5,8 @@ How Coruja is put together and what must stay true. Not a symbol list — for "w
 
 **Status:** the shell (Worker with `/api/health`, placeholder Svelte root calling it through the
 typed client), the **database schema**, and the pure **shift rules** (holidays, day kinds, hours by
-calendar month, segment validation) exist, plus the **sheet reader** (Banking roster out of the
-sheet exported as CSV). No API, scheduler or screens yet.
+calendar month, segment validation), the **scheduler** and the **sheet reader** (Banking roster
+out of the sheet exported as CSV) exist. No API or screens yet.
 
 ## Deploy shape
 
@@ -84,6 +84,17 @@ There is no automatic deadline: the month closes when someone closes it. A month
 unassigned day never becomes ready. Every change to a shift, in any state, goes to the change log
 ([decisions.md #21](decisions.md#21-every-roster-change-is-logged)).
 
+### Scheduler
+
+`suggestRoster` (`src/schedule/scheduler.ts`) takes the month's calendar, the previous month's last
+day (its shift runs into day 1) and each participant's weight, carried balance, rules and absences,
+and returns one dev per day, whole shift. `cant` (and absences) are never assigned; a day nobody
+can take comes back unassigned. Everything else is one cost it minimizes
+([decisions.md #24](decisions.md#24-the-scheduler-minimizes-one-cost-conflicting-rules-resolve-to-the-most-restrictive)):
+hours against the weighted share, weekend/holiday spread, `avoid`/`good`, back-to-back. A weight of
+0 means never scheduled. It does not produce split shifts. A 30-day month with ~8 devs runs in a
+few milliseconds.
+
 ### Reading the sheet (CSV)
 
 `readSheetRoster` (`src/sheet/roster.ts`) turns the sheet exported as CSV into the month's days,
@@ -152,6 +163,9 @@ overlaps (`findSegmentProblem` in `src/schedule/shifts.ts` — every write path 
   hours from the previous month's roster, and the hour count splits the shift between both months.
 - **Holidays turn a 15h shift into a 24h one.** The sheet treated Nov 2 and Nov 20 as weekend days.
   The day kind matters for both the hours and the export.
+- **Scheduler CPU time.** The search recomputes the whole cost for each tried move. Fine for a team
+  of ~10, but Workers on the free plan cap CPU at 10 ms per request: measure before growing the
+  team or the moves much.
 - **The sheet's encoding is Windows-1252** when exported to CSV. Decode the bytes before
   `readSheetRoster` (in the browser, `new TextDecoder('windows-1252')`), or nicknames like "Ícaro"
   arrive broken and match no dev.
