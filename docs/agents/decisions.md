@@ -5,7 +5,7 @@ Choices that look wrong (or arbitrary) but are intentional. Read before "fixing"
 ## Index
 
 Entries are **self-contained**: read only the one you were pointed at. Cite by **anchor**, never by
-line number. A new entry takes the **next number** (highest today is **#17**) plus one line here;
+line number. A new entry takes the **next number** (highest today is **#23**) plus one line here;
 never renumber.
 
 - [**#1** — Only the dev team's Banking column; devs are nicknames](#1-only-the-dev-teams-banking-column-devs-are-nicknames)
@@ -25,6 +25,12 @@ never renumber.
 - [**#15** — Hours are counted by calendar hour](#15-hours-are-counted-by-calendar-hour)
 - [**#16** — The starting balance comes from the November 2026 CSV](#16-the-starting-balance-comes-from-the-november-2026-csv)
 - [**#17** — Rolling release from master; migrations stay backward compatible](#17-rolling-release-from-master-migrations-stay-backward-compatible)
+- [**#18** — Each dev has a participation weight](#18-each-dev-has-a-participation-weight)
+- [**#19** — New devs start at the team's average balance; leaving devs are deactivated](#19-new-devs-start-at-the-teams-average-balance-leaving-devs-are-deactivated)
+- [**#20** — Closed months stay editable to record swaps](#20-closed-months-stay-editable-to-record-swaps)
+- [**#21** — Every roster change is logged](#21-every-roster-change-is-logged)
+- [**#22** — A month with an unassigned day is never "ready"](#22-a-month-with-an-unassigned-day-is-never-ready)
+- [**#23** — Swaps come back from the sheet as a CSV diff (and through MCP)](#23-swaps-come-back-from-the-sheet-as-a-csv-diff-and-through-mcp)
 
 ---
 
@@ -91,7 +97,8 @@ one-off dates to the profile.
 Hard constraint: never assign a dev to a day they `cant`. If nobody is available, leave the day
 unassigned and flag it. Goals, from most to least important:
 
-1. balance hours across devs, including the balance carried over from previous months;
+1. balance hours across devs **in proportion to their participation weight** (#18), including the
+   balance carried over from previous months;
 2. spread weekend/holiday shifts across devs;
 3. honor `good`/`prefer`, stay away from `avoid`;
 4. avoid back-to-back shifts for the same dev (allowed when needed).
@@ -107,9 +114,10 @@ A cron opens the next month on the 20th and generates the suggestion right away 
 no sense with nothing on the calendar. Each dev confirms or edits; an edit resets the confirmation
 of every dev whose shifts changed. When everyone has confirmed, whoever is last runs the export.
 The month is closed manually by whoever exported; there is no automatic deadline. Anyone can edit
-and close (no admin role for this). Shift swaps after the export live only in the Excel sheet.
+and close (no admin role for this). Swaps after the export can be recorded on the closed month
+(#20).
 
-**Don't "fix" by:** auto-closing at a deadline, or syncing swaps back from the sheet.
+**Don't "fix" by:** auto-closing at a deadline.
 
 ### 8. Everything runs in one Cloudflare Worker with D1
 
@@ -231,3 +239,66 @@ first is `v0.1.0` when the MVP ships and the repo goes public.
 
 **Don't "fix" by:** adding a release branch or version bumps per change, or shipping a migration
 that drops/renames something the current code still reads.
+
+### 18. Each dev has a participation weight
+
+Some devs are on call less than others (in November 2026 three devs had a much lower target). Each
+dev has a **participation weight** in the profile, 100% by default. The scheduler balances hours
+against each dev's **expected share** — `weight / sum of active weights` of the month's hours — not
+against an equal split, and the carried-over balance is `actual − expected`. Anyone can change a
+weight (same trust model as the rest of the app).
+
+This is not the manager's 80h/34h target (#9): it only sets the proportion of the split.
+
+**Don't "fix" by:** balancing raw hours equally, or modeling fixed hour targets instead of weights.
+
+### 19. New devs start at the team's average balance; leaving devs are deactivated
+
+A dev who joins starts with the **average balance** of the active team, not zero — at zero they
+would be flooded with shifts to "catch up". A dev who leaves is **deactivated**, never deleted:
+their past shifts and the change log keep pointing at them, and they stop being scheduled.
+
+**Don't "fix" by:** starting new devs at zero, or deleting a dev row.
+
+### 20. Closed months stay editable to record swaps
+
+Swaps keep happening in the Excel sheet after the export. If the app never learns about them, the
+balance drifts from the real hours and the next suggestion is computed on wrong numbers. So a
+closed month can still be edited to record what actually happened; those edits update the balance
+and are logged (#21), but they do not reopen the month or reset confirmations, and nothing is
+exported again.
+
+**Don't "fix" by:** locking closed months, or reopening the confirmation flow on a post-export edit.
+
+### 21. Every roster change is logged
+
+Anyone can edit any shift, so "who took me off the 14th?" will come up. Every change to a shift
+(assignment, split, day kind 15h↔24h, sync from the sheet) writes a log row: who, when, which day,
+before → after. The log is shown on the month's calendar. Generating a suggestion is logged as one
+entry, not one per shift.
+
+**Don't "fix" by:** logging only manual edits, or storing the log as free text.
+
+### 22. A month with an unassigned day is never "ready"
+
+When nobody can take a day, the scheduler leaves it unassigned and flagged (#6). The month cannot
+become ready for export until every day has someone; whoever takes the day does it through a normal
+edit.
+
+**Don't "fix" by:** letting the export run with empty Banking cells, or auto-assigning a `cant` day.
+
+### 23. Swaps come back from the sheet as a CSV diff (and through MCP)
+
+To record swaps made in the Excel sheet (#20), a user uploads the sheet exported as CSV. The app
+reads the Banking column with the **same parser as the starting-balance import** (#16), compares it
+with the month's roster and shows **only the differences** ("day 14: Pedro → Luis"). Nothing is
+applied until the user confirms; applied differences go to the change log (#21).
+
+Everything ends in one API operation, "apply these differences to the month", which the MCP server
+also exposes: a dev can tell Claude Code "I swapped the 14th with Pedro", or hand it the CSV.
+
+Later, maybe: an Office Script that reads the sheet (the reverse of the export), once Office
+Scripts availability is confirmed.
+
+**Don't "fix" by:** applying an uploaded CSV without the diff confirmation, writing a second CSV
+parser, or giving the MCP its own write path that bypasses the change log.

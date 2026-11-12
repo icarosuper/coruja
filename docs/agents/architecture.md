@@ -52,7 +52,9 @@ calendar ([decisions.md #14](decisions.md#14-holidays-are-sao-paulo-citys-comput
 
 ### Profiles (recurring preferences)
 
-Each dev has a profile with recurring rules, valid for every month:
+Each dev has a profile with a **participation weight** (100% by default; the share of hours they
+should take, [decisions.md #18](decisions.md#18-each-dev-has-a-participation-weight)) and recurring
+rules, valid for every month:
 
 - per weekday: `good` / `neutral` / `avoid` / `cant`
 - per day of month (e.g. "the 5th"): `prefer` / `cant`
@@ -73,15 +75,19 @@ reviewing ── dev confirms ──────────────► conf
 all devs confirmed ──► "ready": anyone generates the Office Script and runs it in the sheet
       │
       ▼
-closed (manually, by whoever exported)
+closed (manually, by whoever exported) ── still editable to record swaps (no re-export)
 ```
 
-There is no automatic deadline: the month closes when someone closes it.
+There is no automatic deadline: the month closes when someone closes it. A month with an
+unassigned day never becomes ready. Every change to a shift, in any state, goes to the change log
+([decisions.md #21](decisions.md#21-every-roster-change-is-logged)).
 
 ### Hour balance
 
-Each month's hours per dev are kept, and the difference to the team average **carries over** to
-the next suggestion (who took more this month gets fewer next). The starting balance is imported
+Each month's hours per dev are kept, and the difference to each dev's **expected share** (by
+participation weight) **carries over** to the next suggestion (who took more than their share this
+month gets fewer next). A new dev starts at the team's average balance; a dev who leaves is
+deactivated, never deleted. The starting balance is imported
 once from the November 2026 sheet export (CSV, Windows-1252), Banking column only
 ([decisions.md #16](decisions.md#16-the-starting-balance-comes-from-the-november-2026-csv)). The manager's 80h/34h targets and
 "compensação" are **not** modeled ([decisions.md #9](decisions.md#9-manager-targets-and-compensacao-are-out-of-scope)).

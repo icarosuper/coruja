@@ -5,7 +5,8 @@
 
 **Closed so far:** *(2026-11-12)* planning and repo skeleton (Worker + D1 + Svelte shell, docs);
 holidays, month boundary, UI language, starting balance, Drizzle, Svelte and the typed client
-decided (decisions #11–#16).
+decided (decisions #11–#16); release model (#17); participation weight, joining/leaving devs,
+editable closed months, change log, unassigned days (#18–#22); swap sync via CSV diff + MCP (#23).
 
 ## Open questions (ask the user)
 
@@ -30,13 +31,15 @@ decided (decisions #11–#16).
 
 ## Build order
 
-1. **Domain model + schema** — devs, tokens, profile rules, months, days (15h/24h), shifts/segments,
-   confirmations, balances. First migration.
+1. **Domain model + schema** — devs (participation weight, active flag), tokens, profile rules,
+   months, days (15h/24h), shifts/segments, confirmations, balances, change log. First migration.
 2. **Holidays + hour counting** (pure + tests) — São Paulo holidays (#14), calendar-hour split (#15).
-3. **CSV import** of the starting balance (#16).
+3. **CSV parser + import** of the starting balance (#16); the same parser later feeds the swap
+   sync (#23).
 4. **Scheduler** (`src/schedule/`, pure + tests) — hard rule, ordered goals (decisions #6). Validate
    against the November 2026 sheet.
-5. **API** — auth (dev token, team password), profile, month view, confirm, edit, close.
+5. **API** — auth (dev token, team password), profile, month view, confirm, edit, close, apply
+   differences from a CSV (#23).
 6. **Screens** — decide with the user first: calendar of the month, profile, admin; router and
    component library. Nothing is coded before it is approved.
 7. **Office Script export** (+ paste-special fallback grid).
