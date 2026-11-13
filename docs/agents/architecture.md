@@ -16,7 +16,8 @@ One Cloudflare Worker serves everything:
 - `/api/*` → Hono app in `src/worker/` (`run_worker_first` in `wrangler.jsonc`).
 - everything else → static Svelte build from `src/web/`, SPA fallback to `index.html`.
 - D1 database bound as `DB`, accessed through Drizzle (`src/worker/db/`); SQL migrations generated
-  by drizzle-kit into `migrations/` and applied by wrangler.
+  by drizzle-kit into `migrations/` and applied by wrangler. The Worker runs next to D1 (ENAM), not at
+  the edge (`placement.region`, decisions #29).
 - The web app imports only the **type** `AppType` from the Worker and builds a typed client from it
   (`src/web/api.ts`). No runtime code crosses from `src/worker/` to `src/web/`.
 - A Cron Trigger runs the same Worker daily at 03:00 UTC (midnight in São Paulo) and opens the next

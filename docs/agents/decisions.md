@@ -5,7 +5,7 @@ Choices that look wrong (or arbitrary) but are intentional. Read before "fixing"
 ## Index
 
 Entries are **self-contained**: read only the one you were pointed at. Cite by **anchor**, never by
-line number. A new entry takes the **next number** (highest today is **#25**) plus one line here;
+line number. A new entry takes the **next number** (highest today is **#29**) plus one line here;
 never renumber.
 
 - [**#1** — Only the dev team's Banking column; devs are nicknames](#1-only-the-dev-teams-banking-column-devs-are-nicknames)
@@ -36,6 +36,7 @@ never renumber.
 - [**#26** — Months are never closed: exports are recorded](#26-months-are-never-closed-exports-are-recorded)
 - [**#27** — Screens: hash router, shadcn-svelte, dark mode by redefining the palette](#27-screens-hash-router-shadcn-svelte-dark-mode-by-redefining-the-palette)
 - [**#28** — Any dev can generate an open month's roster again, from scratch](#28-any-dev-can-generate-an-open-months-roster-again-from-scratch)
+- [**#29** — The Worker runs next to D1, not next to the user](#29-the-worker-runs-next-to-d1-not-next-to-the-user)
 
 ---
 
@@ -428,3 +429,23 @@ set stays). Every confirmation goes, and the log records who did it (`regenerate
 
 **Don't "fix" by:** regenerating automatically when a profile changes (it would wipe confirmations
 and edits nobody asked to lose), or keeping hand edits as fixed days without revisiting this entry.
+
+### 29. The Worker runs next to D1, not next to the user
+
+The team is in Brazil, but D1 has no South American location: the database's primary is in ENAM
+(eastern North America) and read replicas have no South American region either. Run at the edge,
+the Worker was in Rio and every query crossed to the US and back (~135 ms each), so a month view,
+with several queries in sequence, took about a second. `placement.region` in `wrangler.jsonc`
+(`aws:us-east-1`, Northern Virginia) runs `/api/*` next to the database instead: each request
+makes one long hop and its queries cost a few milliseconds. Measured from São Paulo, a request with
+one query went from ~200 ms to ~215 ms, and a request with no query from ~75 ms to ~210 ms; each
+extra query in sequence now costs ~5 ms instead of ~135 ms. Static assets are still served from the edge.
+
+- **A region, not Smart Placement:** Smart Placement only moves a Worker once it has enough
+  traffic, which one small team may never give it.
+- **Round trips between the web app and the API still cost a full hop each:** load in parallel
+  (`Promise.all`) rather than in waves.
+
+**Don't "fix" by:** removing the placement to make `/api/health` faster, or moving the database
+without changing the region to match.
+
