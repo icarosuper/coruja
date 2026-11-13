@@ -31,10 +31,17 @@ editable closed months, change log, unassigned days (#18–#22); swap sync via C
 
 ## Build order
 
-1. **Outlook `.ics` feed** per dev.
-2. **MCP server** for Claude Code.
-3. **Teams notifications** (if the Workflows question resolves).
-4. **PR previews with a staging database** — a `preview` environment in `wrangler.jsonc` (separate
+1. **First deploy (MVP)** — `docs/guides/development.md` "First deploy": D1, `TEAM_PASSWORD`, domain;
+   then import the current month from the sheet and run the Office Script on the real sheet once.
+
+After the MVP is live:
+
+2. **Outlook `.ics` feed** per dev. Undecided: how the feed URL authenticates (a per-dev feed secret
+   that can be replaced, not the dev token), where the link shows (a card on the profile), what goes
+   in (own shifts, one event per shift, open months).
+3. **MCP server** for Claude Code.
+4. **Teams notifications** (if the Workflows question resolves).
+5. **PR previews with a staging database** — a `preview` environment in `wrangler.jsonc` (separate
    Worker `coruja-preview` + its own D1 `coruja-staging` with seed data); Workers Builds runs
    `wrangler versions upload` for non-`master` branches, building with `CLOUDFLARE_ENV=preview`
    so the Vite plugin picks that environment. One staging DB shared by all PRs.

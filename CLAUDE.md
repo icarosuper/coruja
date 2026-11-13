@@ -15,7 +15,7 @@ Infra and Sustentação are out of scope: they keep using the sheet directly.
 
 **Status:** database schema, shift rules, scheduler, sheet CSV reader and writer (Office Script,
 paste grid), the API, the screens (month, profile, admin) and the cron that opens months on the 20th.
-Next: the Outlook `.ics` feed — see [docs/TODO.md](docs/TODO.md).
+Next: the first deploy (MVP) — see [docs/TODO.md](docs/TODO.md).
 Screens and visual design are decided with the user **before** they are coded.
 
 ## Commands
