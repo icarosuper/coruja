@@ -7,6 +7,7 @@
   import { api, call } from '../api'
   import { today } from '../calendar'
   import { dayLabel } from '../format'
+  import { links } from '../router.svelte'
   import { session } from '../session.svelte'
   import { downloadXlsx } from '../xlsx'
   import DayEditor from './DayEditor.svelte'
@@ -151,6 +152,20 @@
       <div class="text-4xl">🗓️</div>
       {#if isBeforeCoruja}
         <p class="mt-3 text-lg font-medium">Esse mês é de antes do Coruja</p>
+      {:else if newestMonth === null}
+        <!-- The first month comes from the sheet (decisions #16): it brings the shifts already taken and
+             is born exported. Opening it with a suggestion is only for a team without a sheet. -->
+        <p class="mt-3 text-lg font-medium">O Coruja ainda não tem nenhum mês</p>
+        <p class="mt-1 text-sm text-stone-500">
+          Comece importando o mês atual da planilha do gestor em
+          <a href={links.admin} class="underline">Admin → Planilha</a>. Ele entra como já exportado, com os
+          turnos que já foram feitos, e é dele que o Coruja parte para os próximos meses.
+        </p>
+        {#if canOpenNow}
+          <button type="button" onclick={openNow} class="mt-4 text-sm text-stone-500 underline">
+            Sem planilha? Começar por este mês com a escala sugerida
+          </button>
+        {/if}
       {:else}
         <p class="mt-3 text-lg font-medium">
           {todayDate >= opensOn(month)

@@ -37,10 +37,12 @@ export async function createDev(database: Database, input: { nickname: string; w
     database.select({ id: devs.id }).from(devs).where(eq(devs.active, true)),
     balancesBefore(database, null),
   ])
-  const averageBalance =
+  const exactAverage =
     activeDevs.length === 0
       ? 0
       : activeDevs.reduce((sum, dev) => sum + (balances.get(dev.id) ?? 0), 0) / activeDevs.length
+  // Rounded to the hundredth of an hour: weighted shares leave float noise (4e-15 for a zero average).
+  const averageBalance = Math.round(exactAverage * 100) / 100
 
   const token = generateToken()
   const [dev] = await database

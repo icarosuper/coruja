@@ -190,7 +190,8 @@ reloads after every action; there is no client cache.
   are created there).
 - **Month:** arrows from the first month in Coruja to the one after the newest. A month not opened
   yet shows when it opens; if its 20th has passed and it is still
-  closed (the cron failed, or it is the first month), a button opens it.
+  closed (the cron failed), a button opens it. With no month at all it points to the sheet import
+  (the first month comes from the sheet, decisions #16), opening with a suggestion only as a small link.
   "Hoje" shows today's on-call, from today's month in São Paulo time.
 - **Export:** the Office Script goes to the clipboard (with a button if the browser refuses); the
   paste grid becomes an `.xlsx` built in the browser (`xlsx.ts`, `fflate`).
