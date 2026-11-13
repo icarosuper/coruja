@@ -32,7 +32,7 @@ bun run verify              # typecheck + check + test
 bun run db:generate         # new SQL migration from src/worker/db/schema.ts (drizzle-kit)
 bun run db:migrate:local    # apply migrations/ to the local D1
 bun run suggest <team.json> # print the scheduler's suggestion for a team file (scripts/example-team.json)
-bun run deploy              # build + wrangler deploy (needs the real D1 id, see the guide)
+bun run deploy              # deploy by hand; a push to master deploys via Workers Builds (guide)
 ```
 
 Setup and deploy: [docs/guides/development.md](docs/guides/development.md).

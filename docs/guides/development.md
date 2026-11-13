@@ -85,3 +85,19 @@ bun run deploy
 
 The custom domain is the `routes` entry in `wrangler.jsonc` (its zone must be on the same
 Cloudflare account); the deploy creates its DNS record and certificate.
+
+## Deploying changes
+
+Every push to `master` deploys itself through **Workers Builds** (decisions #17), set up once in the
+dashboard: Workers & Pages → `coruja` → Settings → Build → Connect the GitHub repo, production branch
+`master`, build command `bun run build`, deploy command `npx wrangler deploy`. Preview builds are
+off: other branches would get a preview that talks to the production D1 (staging is in
+`docs/TODO.md`).
+
+Workers Builds ships code only. A migration goes to D1 by hand, **before** the push that needs it:
+
+```bash
+bun run db:migrate:remote
+```
+
+`bun run deploy` still deploys the working tree by hand, for when the build is down.
