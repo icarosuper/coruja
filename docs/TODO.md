@@ -48,3 +48,21 @@ After the MVP is live:
    Worker `coruja-preview` + its own D1 `coruja-staging` with seed data); Workers Builds runs
    `wrangler versions upload` for non-`master` branches, building with `CLOUDFLARE_ENV=preview`
    so the Vite plugin picks that environment. One staging DB shared by all PRs.
+
+## Export format ideas (undecided)
+
+Today the export gives the Office Script, the paste grid and an `.xlsx` of the paste grid. Ideas for
+other formats, noted for later; the user decides whether each one gets built.
+
+- **`.ics`** — shifts in Outlook, Google Calendar or the phone, with reminders. Two shapes: a
+  per-dev subscribable feed that follows swaps (build order item 2), or a one-off `.ics` download of
+  the month (simpler, goes stale after a swap).
+- **Text for Teams** — a "copy roster" button producing plain lines like `Seg 03 — nickname (15h)`,
+  to paste in the channel when a month opens.
+- **Markdown** — the same roster as a Markdown table or list, for Teams, GitHub or a wiki.
+- **PDF / print** — only if someone prints or attaches the roster; a print stylesheet on the month
+  screen may be enough, with no PDF generated on the server.
+- **CSV** — little gain over the `.xlsx` unless a consumer shows up (an integration, an hours report
+  for HR). If built, one row per shift (date, dev, start, end, hours), not the grid.
+- **JSON** — likely no button needed: the API already returns the month, and the planned MCP server
+  covers tools.
