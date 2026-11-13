@@ -22,7 +22,7 @@ bun run dev                 # http://localhost:5173 — /api/* goes to the Worke
 Open http://localhost:5173, go to **Admin** (link on the sign-in screen), unlock with the
 `TEAM_PASSWORD` from `.dev.vars`, add a few devs and copy one token. Sign in with it: the month
 screen offers to open the current month with a suggested roster. To start from the real sheet,
-import its CSV on the admin screen instead (decisions #16).
+import its CSV on that same empty month screen instead (decisions #16).
 
 ### Using the API by hand
 
@@ -38,12 +38,13 @@ curl $API/months -H "Authorization: Bearer $TOKEN"
 curl -X POST $API/months/2026-12/open -H "Authorization: Bearer $TOKEN"
 ```
 
-Importing a month from the sheet (decisions #16): add every dev first, with the sheet's nicknames
-and their weights, then send the CSV decoded from Windows-1252:
+Importing the first month from the sheet (decisions #16; refused once any month exists): add every
+dev first, with the sheet's nicknames and their weights, then send the CSV decoded from
+Windows-1252:
 
 ```bash
 iconv -f WINDOWS-1252 -t UTF-8 sheet.csv | jq -Rs '{csv: .}' |
-  curl -X POST $API/months/import -H 'X-Team-Password: change-me' \
+  curl -X POST $API/months/import -H "Authorization: Bearer $TOKEN" \
     -H 'content-type: application/json' --data-binary @-
 ```
 

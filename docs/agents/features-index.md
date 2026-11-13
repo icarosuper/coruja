@@ -45,8 +45,8 @@ Under `/api`. 🔑 = dev token, 🛡️ = team password.
 | `PUT /months/:month/days/:date` 🔑 | edit a day (kind + segments) | `applyDayChanges` (`edit`) |
 | `POST /months/:month/confirm`, `DELETE /months/:month/confirm` 🔑 | confirm as the calling dev, or take it back (until the export) | `confirmMonth`, `unconfirmMonth` |
 | `POST /months/:month/export` 🔑 | record an export and return the Office Script or the paste grid (pending confirmations allowed, empty days refused, #26) | `exportMonth` |
-| `POST /months/import` 🛡️ | import the first month from the sheet CSV, as already exported; refused once any month exists (#16) | `store/sheet.ts` `importMonth` |
-| `POST /months/:month/sheet-diff` 🔑 | differences between the sheet CSV and the month | `sheetDifferences` |
+| `POST /months/import` 🔑 | import the first month from the sheet CSV, as already exported; refused once any month exists (#16) | `store/sheet.ts` `importMonth` |
+| `POST /months/sheet-diff` 🔑 | the sheet CSV's month and its differences from the roster | `sheetDifferences` |
 | `POST /months/:month/changes` 🔑 | apply differences (sync, #23) | `applyDayChanges` (`sync`) |
 
 | `GET /team/check` 🛡️ | checks the team password (admin screen) | `src/worker/index.ts` |
@@ -63,7 +63,7 @@ Svelte, in `src/web/`. Shell, header and nav: `App.svelte`; routes: `router.svel
 | Day editor (who, split, 15h/24h, preferences per dev) | | `month/DayEditor.svelte` |
 | Hours and balance, change log | | `month/MonthSidePanel.svelte` |
 | Profile: weight, weekday rules, days I can't (tap or drag on two months side by side, one on phones; warning on months with a roster) | `#/perfil` | `profile/ProfilePage.svelte`, `AbsenceCalendar.svelte` |
-| Admin: devs, tokens, sheet import / diff / sync | `#/admin` | `admin/AdminPage.svelte`, `AdminUnlock.svelte` |
+| Admin: devs, tokens, sheet diff / sync | `#/admin` | `admin/AdminPage.svelte`, `AdminUnlock.svelte` |
 | Someone else's profile, as admin | `#/admin/dev/:id` | `profile/ProfilePage.svelte` with `devId` |
 | `.xlsx` of the paste grid | | `src/web/xlsx.ts` |
 

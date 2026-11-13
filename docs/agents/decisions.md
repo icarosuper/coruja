@@ -261,8 +261,9 @@ participant weights are stored at import time.
 The month was still in progress when it was exported, so it reflects the planned roster, not hours
 actually worked; that is accepted (later swaps can be synced, #23). Earlier months are not
 imported, and neither are later ones: once the app has any month, the import is refused
-(`not_first_month`) and the admin screen only offers comparing, because an imported month skips
-the suggestion and the confirmations.
+(`not_first_month`), because an imported month skips the suggestion and the confirmations. So the
+import is offered only on the empty month screen, and any dev may run it (a dev token, not the team
+password): it is the same power as opening the first month.
 
 **Don't "fix" by:** importing the summary table's HORAS/compensação columns instead of counting the
 grid.
@@ -336,7 +337,8 @@ day does it through a normal edit. The API refuses the export (`unassigned_days`
 
 To record swaps made in the Excel sheet (#20), a user uploads the sheet exported as CSV. The app
 reads the Banking column with the **same parser as the starting-balance import** (#16), compares it
-with the month's roster and shows **only the differences** ("day 14: Pedro → Luis"). Nothing is
+with the roster of the sheet's own month (no month to pick) and shows **only the differences**
+("day 14: Pedro → Luis"). Nothing is
 applied until the user confirms; applied differences go to the change log (#21).
 
 Everything ends in one API operation, "apply these differences to the month", which the MCP server

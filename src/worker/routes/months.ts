@@ -2,7 +2,7 @@ import { Hono } from 'hono'
 import { z } from 'zod'
 import { saoPauloDate } from '../../schedule/calendar'
 import type { AppEnv } from '../app-env'
-import { requireDev, requireTeamPassword } from '../auth'
+import { requireDev } from '../auth'
 import { createDatabase } from '../db/client'
 import {
   applyDayChanges,
@@ -28,9 +28,14 @@ export const monthRoutes = new Hono<AppEnv>()
     return context.json(await listMonths(createDatabase(context.env.DB)))
   })
   /** One-time starting point (decisions #16): the sheet's month, imported as already exported. */
-  .post('/import', requireTeamPassword, validate('json', csvSchema), async (context) => {
-    const imported = await importMonth(createDatabase(context.env.DB), context.req.valid('json').csv)
+  .post('/import', requireDev, validate('json', csvSchema), async (context) => {
+    const database = createDatabase(context.env.DB)
+    const imported = await importMonth(database, context.req.valid('json').csv, context.var.dev.id)
     return context.json(imported, 201)
+  })
+  /** The month comes from the sheet itself (decisions #23). */
+  .post('/sheet-diff', requireDev, validate('json', csvSchema), async (context) => {
+    return context.json(await sheetDifferences(createDatabase(context.env.DB), context.req.valid('json').csv))
   })
   .get('/:month', requireDev, validate('param', monthParam), async (context) => {
     return context.json(await monthView(createDatabase(context.env.DB), context.req.valid('param').month))
@@ -101,20 +106,6 @@ export const monthRoutes = new Hono<AppEnv>()
         'sync',
       )
       return context.json(applied)
-    },
-  )
-  .post(
-    '/:month/sheet-diff',
-    requireDev,
-    validate('param', monthParam),
-    validate('json', csvSchema),
-    async (context) => {
-      const differences = await sheetDifferences(
-        createDatabase(context.env.DB),
-        context.req.valid('param').month,
-        context.req.valid('json').csv,
-      )
-      return context.json({ differences })
     },
   )
   .post('/:month/confirm', requireDev, validate('param', monthParam), async (context) => {

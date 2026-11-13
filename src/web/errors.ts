@@ -32,7 +32,7 @@ export function messageOf(code: string, details: Record<string, unknown>): strin
     case 'month_exists':
       return 'Esse mês já foi aberto.'
     case 'not_first_month':
-      return 'O Coruja já tem meses: a planilha agora serve só para comparar.'
+      return 'O Coruja já tem meses: a planilha agora serve só para comparar, no Admin.'
     case 'later_month_exists':
       return 'Já existe um mês depois desse.'
     case 'month_started':
@@ -73,8 +73,6 @@ export function messageOf(code: string, details: Record<string, unknown>): strin
     }
     case 'unknown_nicknames':
       return `Apelidos da planilha que não são devs: ${((details.nicknames as string[] | undefined) ?? []).join(', ')}. Cadastre antes.`
-    case 'sheet_of_another_month':
-      return `Essa planilha é de outro mês (${String(details.sheetMonth)}).`
     default:
       return 'Algo deu errado no servidor. Tente de novo.'
   }

@@ -1,5 +1,5 @@
 import { eq } from 'drizzle-orm'
-import { daysOfMonth, type MonthId } from '../../schedule/dates'
+import { daysOfMonth } from '../../schedule/dates'
 import { defaultCalendar, type ShiftDay } from '../../schedule/shifts'
 import { readSheetRoster, SheetFormatError, type SheetRoster } from '../../sheet/roster'
 import type { Database } from '../db/client'
@@ -71,7 +71,7 @@ async function ensureNoMonthYet(database: Database) {
  * hours enter as `import` adjustments that give each participant exactly what counting that shift
  * would: its hours minus their weighted share of them.
  */
-export async function importMonth(database: Database, csvText: string) {
+export async function importMonth(database: Database, csvText: string, actorDevId: number) {
   const roster = readRoster(csvText)
   const monthId = roster.month
   await ensureNoMonthYet(database)
@@ -119,7 +119,7 @@ export async function importMonth(database: Database, csvText: string) {
         createdAt: now,
       })),
     ),
-    database.insert(changeLog).values({ monthId, action: 'import', createdAt: now }),
+    database.insert(changeLog).values({ monthId, actorDevId, action: 'import', createdAt: now }),
   ])
   return {
     month: monthId,
@@ -143,13 +143,12 @@ function previousShiftAdjustments(
 }
 
 /**
- * What the sheet says differently from the month's roster (decisions #23), one entry per day.
- * `after` can be sent back as is to apply the changes.
+ * What the sheet says differently from its month's roster (decisions #23), one entry per day; the
+ * month is the sheet's own. `after` can be sent back as is to apply the changes.
  */
-export async function sheetDifferences(database: Database, monthId: MonthId, csvText: string) {
+export async function sheetDifferences(database: Database, csvText: string) {
   const roster = readRoster(csvText)
-  const isSameMonth = roster.month === monthId
-  if (!isSameMonth) throw new ApiError(422, 'sheet_of_another_month', { sheetMonth: roster.month })
+  const monthId = roster.month
   const month = await database.query.months.findFirst({ where: eq(months.id, monthId) })
   if (!month) throw new ApiError(404, 'month_not_found')
 
@@ -170,5 +169,5 @@ export async function sheetDifferences(database: Database, monthId: MonthId, csv
     const isDifferent = JSON.stringify(before) !== JSON.stringify(after)
     if (isDifferent) differences.push({ date: sheetDay.date, before, after })
   }
-  return differences
+  return { month: monthId, differences }
 }

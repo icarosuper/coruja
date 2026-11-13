@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { saoPauloDate } from '../../schedule/calendar'
 import { type IsoDate, monthOf } from '../../schedule/dates'
 import { bankingByShift, buildSheet } from '../../sheet/testing/build-sheet'
-import { addDevs, asDev, asTeam, clientFor } from '../testing/client'
+import { addDevs, asDev, clientFor } from '../testing/client'
 import { useTestDatabase } from '../testing/env'
 
 const database = useTestDatabase()
@@ -371,7 +371,7 @@ describe('the sheet', () => {
   it('imports a month as exported and turns the previous month hours into adjustments', async () => {
     const response = await clientFor(database.env).api.months.import.$post(
       { json: { csv: novemberCsv } },
-      asTeam,
+      as('owl'),
     )
     expect(response.status).toBe(201)
     expect(await response.json()).toEqual({ month: '2026-11', participantCount: 4, unassignedDates: [] })
@@ -394,7 +394,7 @@ describe('the sheet', () => {
     const januaryCsv = buildSheet({ month: JANUARY, bankingAt: bankingByShift(ownerOf) })
     const response = await clientFor(database.env).api.months.import.$post(
       { json: { csv: januaryCsv } },
-      asTeam,
+      as('owl'),
     )
     expect(response.status).toBe(409)
     expect(await response.json()).toEqual({ error: 'not_first_month' })
@@ -402,7 +402,7 @@ describe('the sheet', () => {
 
   it('refuses a sheet with nicknames that are not devs', async () => {
     const csv = buildSheet({ month: '2026-11', bankingAt: bankingByShift(() => 'ghost') })
-    const response = await clientFor(database.env).api.months.import.$post({ json: { csv } }, asTeam)
+    const response = await clientFor(database.env).api.months.import.$post({ json: { csv } }, as('owl'))
     expect(response.status).toBe(422)
     expect(await response.json()).toEqual({ error: 'unknown_nicknames', nicknames: ['ghost'] })
   })
@@ -422,12 +422,8 @@ describe('the sheet', () => {
     const csv = buildSheet({ month: DECEMBER, bankingAt: bankingByShift(sheetOwner) })
     const client = clientFor(database.env)
 
-    const diff = await (
-      await client.api.months[':month']['sheet-diff'].$post(
-        { param: { month: DECEMBER }, json: { csv } },
-        as('owl'),
-      )
-    ).json()
+    const diff = await (await client.api.months['sheet-diff'].$post({ json: { csv } }, as('owl'))).json()
+    expect(diff.month).toBe(DECEMBER)
     expect(diff.differences).toEqual([
       {
         date: swappedDate,
@@ -450,12 +446,7 @@ describe('the sheet', () => {
     ).json()
     expect(log[0]?.action).toBe('sync')
 
-    const diffAgain = await (
-      await client.api.months[':month']['sheet-diff'].$post(
-        { param: { month: DECEMBER }, json: { csv } },
-        as('owl'),
-      )
-    ).json()
+    const diffAgain = await (await client.api.months['sheet-diff'].$post({ json: { csv } }, as('owl'))).json()
     expect(diffAgain.differences).toEqual([])
   })
 })

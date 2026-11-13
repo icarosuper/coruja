@@ -8,44 +8,31 @@
   import { api, asTeam, call } from '../api'
   import { cached, remember } from '../cache.svelte'
   import { colorOf, dayLabel, formatBalance, monthName, segmentLabel } from '../format'
-  import type { Dev, MonthSummary } from '../month/types'
+  import type { Dev } from '../month/types'
   import { links } from '../router.svelte'
   import { lockAdmin, session } from '../session.svelte'
+  import { readSheet } from '../sheet'
 
-  type Differences = InferResponseType<
-    (typeof api.api.months)[':month']['sheet-diff']['$post'],
-    200
-  >['differences']
+  type Differences = InferResponseType<(typeof api.api.months)['sheet-diff']['$post'], 200>['differences']
 
   const CACHE_KEY = 'admin'
   const SKELETON_ROWS = 4
-  type AdminAnswers = { devs: Dev[]; months: MonthSummary[] }
+  type AdminAnswers = { devs: Dev[] }
   const remembered = cached<AdminAnswers>(CACHE_KEY)
   let isLoaded = $state(remembered !== null)
   let devs = $state<Dev[]>(remembered?.devs ?? [])
-  let months = $state<MonthSummary[]>(remembered?.months ?? [])
   let newNickname = $state('')
   let shownToken = $state<{ nickname: string; token: string } | null>(null)
 
-  const IMPORT = 'import'
   let sheetFile = $state<File | null>(null)
-  let sheetAction = $state(IMPORT)
-  // Importing is only the starting point (decisions #16): once a month exists, the sheet is only compared.
-  const hasMonths = $derived(months.length > 0)
   let differences = $state<{ month: string; list: Differences } | null>(null)
   let appliedCount = $state<number | null>(null)
 
   async function load() {
-    // Comparing with the sheet is a dev action (any dev syncs swaps, decisions #23).
-    const [devList, monthList] = await Promise.all([
-      call(api.api.devs.$get({}, asTeam())),
-      session.token ? call(api.api.months.$get()) : [],
-    ])
-    remember<AdminAnswers>(CACHE_KEY, { devs: devList, months: monthList })
+    const devList = await call(api.api.devs.$get({}, asTeam()))
+    remember<AdminAnswers>(CACHE_KEY, { devs: devList })
     devs = devList
-    months = monthList
     isLoaded = true
-    if (hasMonths && sheetAction === IMPORT) sheetAction = months[0]?.id ?? IMPORT
   }
 
   async function act(action: () => Promise<unknown>) {
@@ -83,26 +70,15 @@
     act(() => call(api.api.devs[':id'].$patch({ param: { id: String(dev.id) }, json: { active } }, asTeam())))
   }
 
-  /** The manager's sheet is saved by Excel in Windows-1252 (decisions #16). */
-  const readSheet = async (file: File) => new TextDecoder('windows-1252').decode(await file.arrayBuffer())
-
-  function runSheetAction() {
+  function compareWithSheet() {
     const file = sheetFile
     if (!file) return
     appliedCount = null
     differences = null
     act(async () => {
       const csv = await readSheet(file)
-      if (sheetAction === IMPORT) {
-        const imported = await call(api.api.months.import.$post({ json: { csv } }, asTeam()))
-        toast.success(`${monthName(imported.month)} importado da planilha.`)
-        return
-      }
-      const month = sheetAction
-      const found = await call(
-        api.api.months[':month']['sheet-diff'].$post({ param: { month }, json: { csv } }),
-      )
-      differences = { month, list: found.differences }
+      const found = await call(api.api.months['sheet-diff'].$post({ json: { csv } }))
+      differences = { month: found.month, list: found.differences }
     })
   }
 
@@ -315,35 +291,27 @@
             onchange={(event) => (sheetFile = event.currentTarget.files?.[0] ?? null)}
           >
         </label>
-        <select
-          bind:value={sheetAction}
-          class="max-w-full min-w-0 rounded-md border border-stone-300 bg-white px-2 py-1.5"
-        >
-          {#each months as month (month.id)}
-            <option value={month.id}>{monthName(month.id)} — comparar</option>
-          {/each}
-          {#if !hasMonths}
-            <option value={IMPORT}>importar como primeiro mês do Coruja</option>
-          {/if}
-        </select>
         <button
           type="button"
-          disabled={sheetFile === null}
+          disabled={sheetFile === null || session.token === null}
           class="rounded-md bg-stone-900 px-3 py-1.5 text-white disabled:opacity-30"
-          onclick={runSheetAction}
+          onclick={compareWithSheet}
         >
-          {sheetAction === IMPORT ? 'Importar' : 'Ver diferenças'}
+          Ver diferenças
         </button>
       </div>
       {#if session.token === null}
-        <p class="text-xs text-stone-500">Para comparar com um mês, entre com o seu token.</p>
+        <p class="text-xs text-stone-500">Para comparar com a planilha, entre com o seu token.</p>
       {/if}
 
       {#if differences}
         {#if differences.list.length === 0}
-          <p class="text-sm text-emerald-700">✓ A planilha e o Coruja estão iguais.</p>
+          <p class="text-sm text-emerald-700">
+            ✓ A planilha e o Coruja estão iguais em {monthName(differences.month)}.
+          </p>
         {:else}
           <div class="rounded-xl border border-stone-200 bg-white">
+            <p class="px-4 pt-3 text-sm font-medium">{monthName(differences.month)}</p>
             <table class="w-full text-sm">
               <thead class="text-left text-xs text-stone-500">
                 <tr>

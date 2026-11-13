@@ -8,8 +8,10 @@
   import { ApiFailure, api, call } from '../api'
   import { cached, remember } from '../cache.svelte'
   import { today } from '../calendar'
+  import { monthTitle } from '../format'
   import { links } from '../router.svelte'
   import { session } from '../session.svelte'
+  import { readSheet } from '../sheet'
   import { downloadXlsx } from '../xlsx'
   import CloseMonthDialog from './CloseMonthDialog.svelte'
   import DayEditor from './DayEditor.svelte'
@@ -121,6 +123,20 @@
   const unconfirm = () => act(() => call(api.api.months[':month'].confirm.$delete(monthParam())))
   const openNow = () => act(() => call(api.api.months[':month'].open.$post(monthParam())))
 
+  /** The first month comes from the manager's sheet, born exported (decisions #16). */
+  let sheetFile = $state<File | null>(null)
+  function importFirstMonth() {
+    const file = sheetFile
+    if (!file) return
+    act(async () => {
+      const csv = await readSheet(file)
+      const imported = await call(api.api.months.import.$post({ json: { csv } }))
+      toast.success(`${monthTitle(imported.month)} importado da planilha.`)
+      const isOtherMonth = imported.month !== month
+      if (isOtherMonth) location.hash = links.month(imported.month)
+    })
+  }
+
   /** A new suggestion replaces the roster only before the export and on the newest month (decisions #28). */
   const canRegenerate = $derived(view !== null && view.exported === null && month === newestMonth)
   function regenerate() {
@@ -192,10 +208,34 @@
              is born exported. Opening it with a suggestion is only for a team without a sheet. -->
         <p class="mt-3 text-lg font-medium">O Coruja ainda não tem nenhum mês</p>
         <p class="mt-1 text-sm text-stone-500">
-          Comece importando o mês atual da planilha do gestor em
-          <a href={links.admin} class="underline">Admin → Planilha</a>. Ele entra como já exportado, com os
-          turnos que já foram feitos, e é dele que o Coruja parte para os próximos meses.
+          Comece importando o mês atual da planilha do gestor: exporte a aba do mês como CSV. Ele entra como
+          já exportado, com os turnos que já foram feitos, e é dele que o Coruja parte para os próximos meses.
+          Cadastre os devs e acerte os pesos no <a href={links.admin} class="underline">Admin</a> antes.
         </p>
+        <div class="mt-4 flex flex-wrap items-center justify-center gap-2 text-sm">
+          <label
+            class="flex cursor-pointer items-center gap-2 rounded-md border border-stone-300 bg-white px-3 py-1.5 hover:bg-stone-50"
+          >
+            <span>📄</span>
+            <span class={sheetFile ? '' : 'text-stone-500'}
+              >{sheetFile?.name ?? 'Escolher arquivo .csv…'}</span
+            >
+            <input
+              type="file"
+              accept=".csv"
+              class="sr-only"
+              onchange={(event) => (sheetFile = event.currentTarget.files?.[0] ?? null)}
+            >
+          </label>
+          <button
+            type="button"
+            disabled={sheetFile === null}
+            class="rounded-md bg-stone-900 px-3 py-1.5 text-white disabled:opacity-30"
+            onclick={importFirstMonth}
+          >
+            Importar
+          </button>
+        </div>
         {#if canOpenNow}
           <button type="button" onclick={openNow} class="mt-4 text-sm text-stone-500 underline">
             Sem planilha? Começar por este mês com a escala sugerida

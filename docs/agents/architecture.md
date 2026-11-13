@@ -156,7 +156,7 @@ call `store/` (reads and writes in D1, the domain rules in `src/schedule/` and `
   in `X-Team-Password` instead, without a token (that is how the first dev is created). Tokens are
   `coruja_` + 32 random bytes, stored as SHA-256 hex; the team password is compared by digest.
 - **Admin routes** (team password): add a dev (returns the token, once), rename or (de)activate,
-  replace a token, edit someone else's profile, import a month from the sheet.
+  replace a token, edit someone else's profile.
 - **Errors**: `{ error: code, ...details }` with a stable English code (`month_exported`,
   `invalid_segments`, `unknown_nicknames`...). Store code throws `ApiError`; `app.onError` answers
   it. Invalid input is 400 `invalid_request` with zod's `issues`.
@@ -175,7 +175,9 @@ call `store/` (reads and writes in D1, the domain rules in `src/schedule/` and `
   changes the hours of everyone on that day.
 - **Sheet**: the web app decodes the CSV (Windows-1252) and sends it as text in JSON. Import and
   diff refuse unreadable files, sheet problems and nicknames that are not devs (matched ignoring
-  case). The diff's `after` is exactly what `POST /months/:month/changes` takes.
+  case). The diff takes the month from the sheet itself; its `after` is exactly what
+  `POST /months/:month/changes` takes. Import works only while the app has no month at all
+  (`not_first_month`).
 
 ## Web app
 
@@ -194,14 +196,14 @@ once and refreshes; one never loaded shows skeletons (decisions #30).
   are created there).
 - **Month:** arrows from the first month in Coruja to the one after the newest. The month after the
   newest, not opened yet, has a button that opens it; the ⋯ menu of an open month closes it again
-  when it can (dialog first). With no month at all it points to the sheet import
+  when it can (dialog first). With no month at all it imports the sheet's CSV right there
   (the first month comes from the sheet, decisions #16), opening with a suggestion only as a small link.
   "Hoje" shows today's on-call, from today's month in São Paulo time.
 - **Export:** the Office Script goes to the clipboard (with a button if the browser refuses); the
   paste grid becomes an `.xlsx` built in the browser (`xlsx.ts`, `fflate`).
-- **Sheet:** the admin screen decodes the CSV from Windows-1252, then imports it or shows the diff
-  and applies it. Import is offered (and accepted by the API) only while the app has no month at
-  all; after that the sheet is only compared (`not_first_month`).
+- **Sheet:** the CSV is decoded from Windows-1252 in the browser (`src/web/sheet.ts`). The admin
+  screen only compares: it shows the diff for the sheet's month and applies it (needs a dev token).
+  The first-month import lives on the empty month screen.
 
 ## Tables
 

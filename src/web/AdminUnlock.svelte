@@ -21,7 +21,7 @@
 <form class="mx-auto max-w-sm space-y-3 rounded-2xl border border-stone-200 bg-white p-6" onsubmit={submit}>
   <h1 class="text-lg font-semibold">Admin</h1>
   <p class="text-sm text-stone-500">
-    Cadastrar devs, gerar tokens, editar o perfil de alguém e importar a planilha pedem a senha do time.
+    Cadastrar devs, gerar tokens e editar o perfil de alguém pedem a senha do time.
   </p>
   <input
     type="password"
