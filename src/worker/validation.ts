@@ -19,7 +19,9 @@ export const dateSchema = z.iso.date()
 export const idSchema = z.coerce.number().int().positive()
 /** Participation weight in percent (decisions #18). */
 export const weightSchema = z.number().int().min(0).max(100)
-export const nicknameSchema = z.string().trim().min(1).max(40)
+/** Short enough to fit a calendar cell. */
+export const MAX_NICKNAME_LENGTH = 20
+export const nicknameSchema = z.string().trim().min(1).max(MAX_NICKNAME_LENGTH)
 /** The sheet exported as CSV, already decoded to text. A month's sheet is a few dozen KB. */
 export const csvSchema = z.object({ csv: z.string().min(1).max(2_000_000) })
 

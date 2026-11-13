@@ -36,13 +36,21 @@ describe('devs', () => {
   })
 
   it('refuses a nickname that differs only in case', async () => {
-    await addDevs(database.env, [{ nickname: 'Ícaro' }])
+    await addDevs(database.env, [{ nickname: 'Órion' }])
     const response = await clientFor(database.env).api.devs.$post(
-      { json: { nickname: 'ícaro ', weight: 100 } },
+      { json: { nickname: 'órion ', weight: 100 } },
       asTeam,
     )
     expect(response.status).toBe(409)
     expect(await response.json()).toEqual({ error: 'nickname_taken' })
+  })
+
+  it('refuses a nickname longer than a calendar cell fits', async () => {
+    const response = await clientFor(database.env).api.devs.$post(
+      { json: { nickname: 'a'.repeat(21), weight: 100 } },
+      asTeam,
+    )
+    expect(response.status).toBe(400)
   })
 
   it('replaces a token: the old one stops working', async () => {

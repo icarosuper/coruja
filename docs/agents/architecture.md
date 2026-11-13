@@ -201,5 +201,5 @@ overlaps (`findSegmentProblem` in `src/schedule/shifts.ts` — every write path 
   of ~10, but Workers on the free plan cap CPU at 10 ms per request: measure before growing the
   team or the moves much.
 - **The sheet's encoding is Windows-1252** when exported to CSV. Decode the bytes before
-  `readSheetRoster` (in the browser, `new TextDecoder('windows-1252')`), or nicknames like "Ícaro"
+  `readSheetRoster` (in the browser, `new TextDecoder('windows-1252')`), or nicknames like "Órion"
   arrive broken and match no dev.

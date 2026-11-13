@@ -26,7 +26,7 @@ Under `/api`. 🔑 = dev token, 🛡️ = team password.
 |---|---|---|
 | `GET /health` | liveness | `src/worker/index.ts` |
 | `GET /devs` 🔑 | devs with weight, active, balance | `routes/devs.ts` → `store/devs.ts` `listDevs` |
-| `POST /devs` 🛡️ | add a dev (starts at the average balance), returns the token once | `createDev` |
+| `POST /devs` 🛡️ | add a dev (nickname up to 20 characters, to fit a calendar cell; starts at the average balance), returns the token once | `createDev` |
 | `PATCH /devs/:id` 🛡️ | rename, (de)activate | `updateDev` |
 | `POST /devs/:id/token` 🛡️ | replace the token | `issueToken` |
 | `PUT /devs/:id/weight` 🔑 | set a participation weight | `setWeight` |
