@@ -187,7 +187,7 @@ Hash routes: `#/entrar`, `#/mes/YYYY-MM` (`#/mes` = the default month: the curre
 from the 20th on), `#/perfil`, `#/admin`, `#/admin/dev/:id`. Each screen loads what it shows in one
 wave of parallel requests and reloads after every action, except the profile's rule buttons, which
 save in order and reload only on a failure. The last answer of each screen stays in memory
-(`src/web/cache.svelte.ts`, forgotten on sign-out and admin lock): a screen shown again appears at
+(`src/web/cache.svelte.ts`, forgotten on sign-out and when the API refuses the team password): a screen shown again appears at
 once and refreshes; one never loaded shows skeletons (decisions #30).
 
 - **Sign-in:** the dev pastes their token once; it is checked with `GET /me` and kept in

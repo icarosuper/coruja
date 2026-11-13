@@ -1,6 +1,7 @@
 <script lang="ts">
   // A dev's profile — weight, weekday rules, days they can't take (decisions #5). "Meu perfil", or with `devId`
   // someone else's, edited from the admin screen with the team password.
+  import ArrowLeftIcon from '@lucide/svelte/icons/arrow-left'
   import { untrack } from 'svelte'
   import { toast } from 'svelte-sonner'
   import Skeleton from '$lib/components/ui/skeleton/skeleton.svelte'
@@ -186,11 +187,12 @@
       <div
         class="flex flex-wrap items-center gap-3 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm"
       >
-        <span
-          >Editando o perfil de <b>{profile.dev.nickname}</b> como admin, para quando a pessoa não conseguir
-          editar sozinha.</span
+        <span>Editando o perfil de <b>{profile.dev.nickname}</b> como admin.</span>
+        <a
+          href={links.admin}
+          class="ml-auto flex items-center gap-1.5 rounded-md border border-amber-300 bg-white px-2.5 py-1 font-medium text-amber-800 transition hover:bg-amber-100"
+          ><ArrowLeftIcon class="size-4" />Voltar</a
         >
-        <a href={links.admin} class="ml-auto underline">voltar</a>
       </div>
       <label class="block space-y-1 text-sm">
         <span class="font-medium">Apelido</span>

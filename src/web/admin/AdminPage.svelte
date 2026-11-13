@@ -1,8 +1,11 @@
 <script lang="ts">
+  import RefreshCwIcon from '@lucide/svelte/icons/refresh-cw'
+  import UserPenIcon from '@lucide/svelte/icons/user-pen'
   // Admin, behind the team password: devs, tokens, and the manager's sheet (import, diff, sync).
   import type { InferResponseType } from 'hono/client'
   import { toast } from 'svelte-sonner'
   import Skeleton from '$lib/components/ui/skeleton/skeleton.svelte'
+  import { Switch } from '$lib/components/ui/switch/index.js'
   import type { DayKind } from '../../schedule/shifts'
   import AdminUnlock from '../AdminUnlock.svelte'
   import { api, asTeam, call } from '../api'
@@ -10,7 +13,7 @@
   import { colorOf, dayLabel, formatBalance, monthName, segmentLabel } from '../format'
   import type { Dev } from '../month/types'
   import { links } from '../router.svelte'
-  import { lockAdmin, session } from '../session.svelte'
+  import { session } from '../session.svelte'
   import { readSheet } from '../sheet'
 
   type Differences = InferResponseType<(typeof api.api.months)['sheet-diff']['$post'], 200>['differences']
@@ -108,17 +111,35 @@
     }`
 </script>
 
+{#snippet tokenButton(dev: Dev)}
+  <button
+    type="button"
+    title="Gerar novo token"
+    aria-label="Gerar novo token de {dev.nickname}"
+    class="rounded-md p-1.5 text-stone-500 transition hover:bg-stone-200 hover:text-stone-900"
+    onclick={() => generateToken(dev)}
+  >
+    <RefreshCwIcon class="size-[18px]" />
+  </button>
+{/snippet}
+
+{#snippet editLink(dev: Dev)}
+  <a
+    href={links.adminDev(dev.id)}
+    title="Editar perfil"
+    aria-label="Editar perfil de {dev.nickname}"
+    class="inline-flex rounded-md p-1.5 text-stone-500 transition hover:bg-stone-200 hover:text-stone-900"
+  >
+    <UserPenIcon class="size-[18px]" />
+  </a>
+{/snippet}
+
 {#if session.teamPassword === null}
   <AdminUnlock />
 {:else}
   <div class="mx-auto max-w-4xl space-y-8">
     <section class="space-y-3">
-      <div class="flex items-center gap-3">
-        <h1 class="text-2xl font-semibold">Devs</h1>
-        <button type="button" class="ml-auto text-sm text-stone-500 underline" onclick={lockAdmin}>
-          bloquear admin
-        </button>
-      </div>
+      <h1 class="text-2xl font-semibold">Devs</h1>
       {#if shownToken}
         <div class="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm">
           <p>
@@ -152,62 +173,55 @@
       {/if}
 
       <div class="hidden overflow-hidden rounded-xl border border-stone-200 bg-white shadow-sm md:block">
-        <table class="w-full text-sm">
+        <table class="w-full text-[15px]">
           <thead
-            class="border-b border-stone-200 bg-stone-100 text-left text-xs font-medium tracking-wide text-stone-600 uppercase"
+            class="border-b border-stone-200 bg-stone-100 text-left text-sm font-semibold text-stone-600"
           >
             <tr>
-              <th class="px-4 py-2.5 font-medium">Apelido</th>
-              <th class="px-3 font-medium">Peso</th>
-              <th class="px-3 font-medium">Saldo</th>
-              <th class="px-3 font-medium">Token</th>
-              <th class="px-3 font-medium">Ativo</th>
-              <th></th>
+              <th class="px-4 py-3 font-semibold">Apelido</th>
+              <th class="px-3 text-right font-semibold">Peso</th>
+              <th class="px-3 text-right font-semibold">Saldo</th>
+              <th class="px-3 text-center font-semibold">Token</th>
+              <th class="px-3 text-center font-semibold">Ativo</th>
+              <th class="pr-4"><span class="sr-only">Perfil</span></th>
             </tr>
           </thead>
           <tbody>
             {#if !isLoaded}
               {#each Array.from({ length: SKELETON_ROWS }) as _, index (index)}
                 <tr>
-                  <td colspan="6" class="px-4 py-3"><Skeleton class="h-6 w-full" /></td>
+                  <td colspan="6" class="px-4 py-3"><Skeleton class="h-7 w-full" /></td>
                 </tr>
               {/each}
             {/if}
             {#each devs as dev (dev.id)}
-              <tr
-                class="transition-colors even:bg-stone-50 hover:bg-sky-50 {dev.active
-                  ? ''
-                  : 'text-stone-400'}"
-              >
+              <tr class="transition-colors even:bg-stone-50 hover:bg-sky-50">
                 <td class="px-4 py-3">
                   <span
-                    class="inline-block max-w-40 truncate rounded px-1.5 py-0.5 align-middle text-xs font-medium {colorOf(
+                    class="inline-block max-w-48 truncate rounded-md px-2 py-0.5 align-middle text-[15px] font-medium {colorOf(
                       dev.id,
-                    )}"
+                    )} {dev.active ? '' : 'opacity-40 grayscale'}"
                     >{dev.nickname}</span
                   >
                 </td>
-                <td class="px-3">{dev.weight}%</td>
-                <td class="px-3 tabular-nums">{formatBalance(dev.balance)}</td>
-                <td class="px-3">{dev.hasToken ? 'tem' : '— nunca gerado'}</td>
+                <td class="px-3 text-right tabular-nums {dev.active ? '' : 'text-stone-400'}">
+                  {dev.weight}%
+                </td>
+                <td class="px-3 text-right tabular-nums {dev.active ? '' : 'text-stone-400'}">
+                  {formatBalance(dev.balance)}
+                </td>
                 <td class="px-3">
-                  <input
-                    type="checkbox"
+                  <div class="flex justify-center">{@render tokenButton(dev)}</div>
+                </td>
+                <td class="px-3 text-center">
+                  <Switch
                     checked={dev.active}
                     aria-label="Ativo"
-                    onchange={(event) => setActive(dev, event.currentTarget.checked)}
-                  >
+                    class="align-middle"
+                    onCheckedChange={(active) => setActive(dev, active)}
+                  />
                 </td>
-                <td class="pr-4 text-right whitespace-nowrap">
-                  <button
-                    type="button"
-                    class="text-sky-700 hover:underline"
-                    onclick={() => generateToken(dev)}
-                  >
-                    {dev.hasToken ? 'gerar novo token' : 'gerar token'}
-                  </button>
-                  <a href={links.adminDev(dev.id)} class="ml-3 text-sky-700 hover:underline">editar perfil</a>
-                </td>
+                <td class="pr-4 text-right">{@render editLink(dev)}</td>
               </tr>
             {:else}
               {#if isLoaded}
@@ -227,31 +241,25 @@
           {/each}
         {/if}
         {#each devs as dev (dev.id)}
-          <li
-            class="rounded-xl border border-stone-200 bg-white p-3 text-sm shadow-sm {dev.active
-              ? ''
-              : 'text-stone-400'}"
-          >
+          <li class="rounded-xl border border-stone-200 bg-white p-3 text-[15px] shadow-sm">
             <div class="flex items-center gap-2">
-              <span class="max-w-40 truncate rounded px-1.5 py-0.5 font-medium {colorOf(dev.id)}"
+              <span
+                class="max-w-40 truncate rounded-md px-2 py-0.5 font-medium {colorOf(dev.id)} {dev.active
+                  ? ''
+                  : 'opacity-40 grayscale'}"
                 >{dev.nickname}</span
               >
-              <span class="text-stone-500">{dev.weight}% · saldo {formatBalance(dev.balance)}</span>
-              <label class="ml-auto flex items-center gap-1.5 text-xs text-stone-600">
-                <input
-                  type="checkbox"
-                  checked={dev.active}
-                  onchange={(event) => setActive(dev, event.currentTarget.checked)}
-                >
-                ativo
-              </label>
+              <Switch
+                checked={dev.active}
+                aria-label="Ativo"
+                class="ml-auto"
+                onCheckedChange={(active) => setActive(dev, active)}
+              />
             </div>
-            <div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-stone-500">
-              <span>{dev.hasToken ? 'tem token' : 'token nunca gerado'}</span>
-              <button type="button" class="py-1 text-sky-700" onclick={() => generateToken(dev)}>
-                {dev.hasToken ? 'gerar novo token' : 'gerar token'}
-              </button>
-              <a href={links.adminDev(dev.id)} class="py-1 text-sky-700">editar perfil</a>
+            <div class="mt-2 flex items-center gap-1 text-sm text-stone-500">
+              <span class="mr-auto tabular-nums">{dev.weight}% · saldo {formatBalance(dev.balance)}</span>
+              {@render tokenButton(dev)}
+              {@render editLink(dev)}
             </div>
           </li>
         {/each}

@@ -20,7 +20,6 @@ export async function listDevs(database: Database) {
     nickname: dev.nickname,
     weight: dev.weight,
     active: dev.active,
-    hasToken: dev.tokenHash !== null,
     balance: balances.get(dev.id) ?? 0,
   }))
 }

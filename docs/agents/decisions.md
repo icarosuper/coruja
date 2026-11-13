@@ -471,7 +471,7 @@ of moving the data:
   "not opened", instead of checking the list first and asking in a second wave.
 - **The last answer stays in memory** (`src/web/cache.svelte.ts`), per screen: a screen shown again
   appears at once and refreshes behind. In memory only, so a page reload starts fresh, and it is
-  forgotten on sign-out and on admin lock. A screen with nothing remembered shows skeletons.
+  forgotten on sign-out and when the team password is refused. A screen with nothing remembered shows skeletons.
 - **Profile rule buttons do not reload.** The click already shows the new state; saves go out one
   after the other (a later click must not be overwritten by an earlier answer) and only a failure
   reloads. Other actions reload after waiting for pending rule saves.

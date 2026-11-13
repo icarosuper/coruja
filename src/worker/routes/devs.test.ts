@@ -13,7 +13,7 @@ describe('devs', () => {
 
     const listResponse = await client.api.devs.$get({}, asDev(token))
     expect(await listResponse.json()).toEqual([
-      { id: dev.id, nickname: 'owl', weight: 100, active: true, hasToken: true, balance: 0 },
+      { id: dev.id, nickname: 'owl', weight: 100, active: true, balance: 0 },
     ])
   })
 

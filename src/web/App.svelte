@@ -1,4 +1,6 @@
 <script lang="ts">
+  import LogInIcon from '@lucide/svelte/icons/log-in'
+  import LogOutIcon from '@lucide/svelte/icons/log-out'
   import { ModeWatcher, setMode, userPrefersMode } from 'mode-watcher'
   import Skeleton from '$lib/components/ui/skeleton/skeleton.svelte'
   import { Toaster } from '$lib/components/ui/sonner/index.js'
@@ -6,6 +8,7 @@
   import AdminPage from './admin/AdminPage.svelte'
   import { api, call } from './api'
   import { today } from './calendar'
+  import { colorOf } from './format'
   import MonthPage from './month/MonthPage.svelte'
   import ProfilePage from './profile/ProfilePage.svelte'
   import { links, router } from './router.svelte'
@@ -68,21 +71,32 @@
           onclick={cycleTheme}
           title="Tema: {THEME_LABEL[theme]}"
           aria-label="Tema: {THEME_LABEL[theme]}"
-          class="ml-auto rounded-md border border-stone-200 px-2.5 py-1 text-sm text-stone-600 hover:bg-stone-100"
+          class="ml-auto rounded-md border border-stone-200 px-2.5 py-1 text-[15px] text-stone-600 transition hover:bg-stone-100"
         >
           {THEME_ICON[theme]}<span class="ml-1 hidden sm:inline">{THEME_LABEL[theme]}</span>
         </button>
-        <div class="text-sm whitespace-nowrap text-stone-500">
+        <div class="flex items-center gap-2 text-[15px] whitespace-nowrap">
           {#if session.token}
             {#if session.me}
-              {session.me.nickname}
+              <span class="max-w-32 truncate rounded-md px-2 py-0.5 font-medium {colorOf(session.me.id)}"
+                >{session.me.nickname}</span
+              >
             {:else}
-              <Skeleton class="inline-block h-4 w-16 align-middle" />
+              <Skeleton class="inline-block h-6 w-20 align-middle" />
             {/if}
-            ·
-            <a href={links.signIn} class="underline" onclick={signOut}>sair</a>
+            <a
+              href={links.signIn}
+              onclick={signOut}
+              title="Sair"
+              class="flex items-center gap-1.5 rounded-md border border-stone-200 px-2.5 py-1 text-stone-600 transition hover:border-rose-300 hover:bg-rose-50 hover:text-rose-700"
+              ><LogOutIcon class="size-4" /><span class="hidden sm:inline">Sair</span></a
+            >
           {:else}
-            <a href={links.signIn} class="underline">entrar</a>
+            <a
+              href={links.signIn}
+              class="flex items-center gap-1.5 rounded-md border border-stone-200 px-2.5 py-1 text-stone-600 transition hover:bg-stone-100 hover:text-stone-900"
+              ><LogInIcon class="size-4" />Entrar</a
+            >
           {/if}
         </div>
       </div>

@@ -1,7 +1,7 @@
 import { hc } from 'hono/client'
 import type { AppType } from '../worker/index'
 import { messageOf } from './errors'
-import { session, signOut } from './session.svelte'
+import { lockAdmin, session, signOut } from './session.svelte'
 
 // Typed from the Worker's routes: no request/response types are declared on the web side.
 export const api = hc<AppType>('/', {
@@ -24,7 +24,10 @@ export class ApiFailure extends Error {
 
 type Response = { ok: boolean; status: number; json(): Promise<unknown> }
 
-/** Awaits a typed call and returns its body, or throws `ApiFailure`. A rejected token signs out. */
+/**
+ * Awaits a typed call and returns its body, or throws `ApiFailure`. A rejected token signs out; a rejected
+ * team password locks the admin screens, so a password changed on the Worker asks for the new one.
+ */
 export async function call<Answer extends Response>(
   request: Promise<Answer>,
 ): Promise<Awaited<ReturnType<Answer['json']>>> {
@@ -40,5 +43,7 @@ export async function call<Answer extends Response>(
   const code = body.error ?? 'internal_error'
   const isTokenRefused = code === 'invalid_token' || code === 'missing_token'
   if (isTokenRefused) signOut()
+  const isTeamPasswordRefused = code === 'invalid_team_password'
+  if (isTeamPasswordRefused) lockAdmin()
   throw new ApiFailure(code, body)
 }
