@@ -260,7 +260,9 @@ participant weights are stored at import time.
 
 The month was still in progress when it was exported, so it reflects the planned roster, not hours
 actually worked; that is accepted (later swaps can be synced, #23). Earlier months are not
-imported.
+imported, and neither are later ones: once the app has any month, the import is refused
+(`not_first_month`) and the admin screen only offers comparing, because an imported month skips
+the suggestion and the confirmations.
 
 **Don't "fix" by:** importing the summary table's HORAS/compensação columns instead of counting the
 grid.

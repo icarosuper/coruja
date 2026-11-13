@@ -389,6 +389,17 @@ describe('the sheet', () => {
     expect(kite?.balanceAfter).toBeCloseTo((kite?.hours ?? 0) + 9 - expectedShare)
   })
 
+  it('refuses to import once the app has a month', async () => {
+    await openMonth(DECEMBER)
+    const januaryCsv = buildSheet({ month: JANUARY, bankingAt: bankingByShift(ownerOf) })
+    const response = await clientFor(database.env).api.months.import.$post(
+      { json: { csv: januaryCsv } },
+      asTeam,
+    )
+    expect(response.status).toBe(409)
+    expect(await response.json()).toEqual({ error: 'not_first_month' })
+  })
+
   it('refuses a sheet with nicknames that are not devs', async () => {
     const csv = buildSheet({ month: '2026-11', bankingAt: bankingByShift(() => 'ghost') })
     const response = await clientFor(database.env).api.months.import.$post({ json: { csv } }, asTeam)

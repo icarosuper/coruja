@@ -31,6 +31,8 @@ export function messageOf(code: string, details: Record<string, unknown>): strin
       return 'Esse mês não existe no Coruja.'
     case 'month_exists':
       return 'Esse mês já foi aberto.'
+    case 'not_first_month':
+      return 'O Coruja já tem meses: a planilha agora serve só para comparar.'
     case 'later_month_exists':
       return 'Já existe um mês depois desse.'
     case 'month_started':

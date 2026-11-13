@@ -15,7 +15,7 @@ import {
 import { ApiError } from '../errors'
 import { insertRows, runBatch } from './batch'
 import { resolveNicknames } from './devs'
-import { type DayChange, ensureMonthCanBeAdded, sortedSegments } from './months'
+import { type DayChange, sortedSegments } from './months'
 import { loadShiftDays } from './shift-days'
 
 // The manager's sheet exported as CSV, read by the one parser (decisions #16, #23). The CSV arrives
@@ -55,6 +55,13 @@ async function withDevIds(database: Database, roster: SheetRoster) {
   return { shiftDays, hoursFromPreviousMonth }
 }
 
+/** The import is only the starting point: once the app has a month, the sheet is only compared. */
+async function ensureNoMonthYet(database: Database) {
+  const [anyMonth] = await database.select({ id: months.id }).from(months).limit(1)
+  const hasMonth = anyMonth !== undefined
+  if (hasMonth) throw new ApiError(409, 'not_first_month')
+}
+
 /**
  * Imports a month from the sheet as already exported: the sheet has it (decisions #16): its days and segments, and as
  * participants every active dev with a weight above 0 plus anyone named in the sheet. Create the
@@ -67,7 +74,7 @@ async function withDevIds(database: Database, roster: SheetRoster) {
 export async function importMonth(database: Database, csvText: string) {
   const roster = readRoster(csvText)
   const monthId = roster.month
-  await ensureMonthCanBeAdded(database, monthId)
+  await ensureNoMonthYet(database)
   const { shiftDays, hoursFromPreviousMonth } = await withDevIds(database, roster)
 
   const namedDevIds = new Set([

@@ -56,7 +56,7 @@ async function findMonth(database: Database, monthId: MonthId) {
 }
 
 /** Fails unless `monthId` would be the latest month: months are added in order, never before another. */
-export async function ensureMonthCanBeAdded(database: Database, monthId: MonthId): Promise<void> {
+async function ensureMonthCanBeAdded(database: Database, monthId: MonthId): Promise<void> {
   const existing = await database.select({ id: months.id }).from(months)
   const alreadyExists = existing.some((month) => month.id === monthId)
   if (alreadyExists) throw new ApiError(409, 'month_exists')

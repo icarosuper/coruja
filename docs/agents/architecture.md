@@ -200,7 +200,8 @@ once and refreshes; one never loaded shows skeletons (decisions #30).
 - **Export:** the Office Script goes to the clipboard (with a button if the browser refuses); the
   paste grid becomes an `.xlsx` built in the browser (`xlsx.ts`, `fflate`).
 - **Sheet:** the admin screen decodes the CSV from Windows-1252, then imports it or shows the diff
-  and applies it.
+  and applies it. Import is offered (and accepted by the API) only while the app has no month at
+  all; after that the sheet is only compared (`not_first_month`).
 
 ## Tables
 

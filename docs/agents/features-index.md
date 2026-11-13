@@ -45,7 +45,7 @@ Under `/api`. 🔑 = dev token, 🛡️ = team password.
 | `PUT /months/:month/days/:date` 🔑 | edit a day (kind + segments) | `applyDayChanges` (`edit`) |
 | `POST /months/:month/confirm`, `DELETE /months/:month/confirm` 🔑 | confirm as the calling dev, or take it back (until the export) | `confirmMonth`, `unconfirmMonth` |
 | `POST /months/:month/export` 🔑 | record an export and return the Office Script or the paste grid (pending confirmations allowed, empty days refused, #26) | `exportMonth` |
-| `POST /months/import` 🛡️ | import a month from the sheet CSV, as already exported (#16) | `store/sheet.ts` `importMonth` |
+| `POST /months/import` 🛡️ | import the first month from the sheet CSV, as already exported; refused once any month exists (#16) | `store/sheet.ts` `importMonth` |
 | `POST /months/:month/sheet-diff` 🔑 | differences between the sheet CSV and the month | `sheetDifferences` |
 | `POST /months/:month/changes` 🔑 | apply differences (sync, #23) | `applyDayChanges` (`sync`) |
 

@@ -30,6 +30,8 @@
   const IMPORT = 'import'
   let sheetFile = $state<File | null>(null)
   let sheetAction = $state(IMPORT)
+  // Importing is only the starting point (decisions #16): once a month exists, the sheet is only compared.
+  const hasMonths = $derived(months.length > 0)
   let differences = $state<{ month: string; list: Differences } | null>(null)
   let appliedCount = $state<number | null>(null)
 
@@ -43,7 +45,6 @@
     devs = devList
     months = monthList
     isLoaded = true
-    const hasMonths = months.length > 0
     if (hasMonths && sheetAction === IMPORT) sheetAction = months[0]?.id ?? IMPORT
   }
 
@@ -321,7 +322,9 @@
           {#each months as month (month.id)}
             <option value={month.id}>{monthName(month.id)} — comparar</option>
           {/each}
-          <option value={IMPORT}>importar como mês já exportado (só o primeiro mês)</option>
+          {#if !hasMonths}
+            <option value={IMPORT}>importar como primeiro mês do Coruja</option>
+          {/if}
         </select>
         <button
           type="button"
