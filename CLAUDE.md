@@ -57,7 +57,8 @@ SPA + Vite (`@cloudflare/vite-plugin`) · TypeScript 6 · bun · Biome · Vitest
   (`TEAM_PASSWORD`). Neither is ever logged or returned after creation
   ([#3](docs/agents/decisions.md#3-auth-is-one-token-per-dev-plus-a-team-password)).
 - **Do not hand-edit generated files:** `worker-configuration.d.ts` (`bun run cf-typegen`) and
-  the SQL in `migrations/` (`bun run db:generate`).
+  the SQL in `migrations/` (`bun run db:generate`; one D1 exception in
+  [conventions.md](docs/agents/conventions.md#database)).
 - **Real names stay out of the repo.** Devs are identified by nickname only; no CSV/XLSX from the
   real sheet is committed (they are in `.gitignore`).
 

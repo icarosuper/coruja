@@ -12,6 +12,7 @@ Feature → files. Update in the same change that adds, moves or removes somethi
 | Profile rules → preference on a date | `preferenceOn` — `src/schedule/preferences.ts` |
 | Suggested roster for a month | `suggestRoster` — `src/schedule/scheduler.ts`; try it: `bun run suggest` (`scripts/suggest-roster.ts`) |
 | Read the Banking roster from the sheet CSV | `readSheetRoster` — `src/sheet/roster.ts` (CSV: `src/sheet/csv.ts`) |
+| Write the month to the sheet: Office Script, paste grid | `bankingCells`, `officeScript`, `pasteGrid` — `src/sheet/export.ts` |
 | One month's hours and expected share per dev | `monthHoursByDev` — `src/schedule/balance.ts` |
 | Balances over all months + adjustments | `loadBalances`, `balancesBefore` — `src/worker/store/balances.ts` |
 | Token / team password auth | `requireDev`, `requireTeamPassword`, `generateToken`, `hashToken` — `src/worker/auth.ts` |
@@ -33,14 +34,15 @@ Under `/api`. 🔑 = dev token, 🛡️ = team password.
 | `GET /me` 🔑 | own profile: rules, absences | `routes/me.ts` → `store/profile.ts` `loadProfile` |
 | `PUT /me/rules` 🔑 | replace own rules | `replaceRules` |
 | `POST /me/absences`, `DELETE /me/absences/:id` 🔑 | own planned absences; a new one that overlaps or touches others is merged with them into one range | `addAbsence`, `removeAbsence` |
-| `GET /months` 🔑 | months and status | `routes/months.ts` → `store/months.ts` `listMonths` |
+| `GET /devs/:id/profile`, `PUT /devs/:id/rules`, `POST /devs/:id/absences`, `DELETE /devs/:id/absences/:absenceId` 🛡️ | someone else's profile, edited by an admin | `routes/devs.ts` → `store/profile.ts` |
+| `GET /months` 🔑 | months and when each was last exported | `routes/months.ts` → `store/months.ts` `listMonths` |
 | `POST /months/:month/open` 🔑 | open with a suggested roster | `openMonth` |
-| `GET /months/:month` 🔑 | calendar, hours, balances, confirmations, readiness | `monthView` |
+| `GET /months/:month` 🔑 | calendar, hours, balances, confirmations, readiness, last export and changes after it | `monthView` |
 | `GET /months/:month/log` 🔑 | change log, newest first | `monthLog` |
 | `PUT /months/:month/days/:date` 🔑 | edit a day (kind + segments) | `applyDayChanges` (`edit`) |
 | `POST /months/:month/confirm` 🔑 | confirm as the calling dev | `confirmMonth` |
-| `POST /months/:month/close` 🔑 | close (pending confirmations allowed) | `closeMonth` |
-| `POST /months/import` 🛡️ | import a month from the sheet CSV, closed (#16) | `store/sheet.ts` `importClosedMonth` |
+| `POST /months/:month/export` 🔑 | record an export and return the Office Script or the paste grid (pending confirmations allowed, empty days refused, #26) | `exportMonth` |
+| `POST /months/import` 🛡️ | import a month from the sheet CSV, as already exported (#16) | `store/sheet.ts` `importMonth` |
 | `POST /months/:month/sheet-diff` 🔑 | differences between the sheet CSV and the month | `sheetDifferences` |
 | `POST /months/:month/changes` 🔑 | apply differences (sync, #23) | `applyDayChanges` (`sync`) |
 

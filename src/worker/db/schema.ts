@@ -16,7 +16,6 @@ import { DAY_KINDS } from '../../schedule/shifts'
 // Derived values are NOT stored: hours per dev, balances and "ready for export" are computed.
 
 export { DAY_KINDS, PREFERENCE_RULE_KINDS, PREFERENCES }
-export const MONTH_STATUSES = ['open', 'closed'] as const
 export const BALANCE_ADJUSTMENT_REASONS = ['joined', 'import'] as const
 export const CHANGE_LOG_ACTIONS = [
   'generate',
@@ -25,7 +24,7 @@ export const CHANGE_LOG_ACTIONS = [
   'day_kind',
   'sync',
   'confirm',
-  'close',
+  'export',
   'import',
 ] as const
 
@@ -91,20 +90,20 @@ export const absences = sqliteTable(
   ],
 )
 
-/** One row per month; `id` is `YYYY-MM`. "Ready" is derived, not stored (#7, #22). */
-export const months = sqliteTable(
-  'months',
-  {
-    id: text('id').primaryKey(),
-    status: text('status', { enum: MONTH_STATUSES }).notNull().default('open'),
-    openedAt: integer('opened_at', { mode: 'timestamp_ms' })
-      .notNull()
-      .$defaultFn(() => new Date()),
-    closedAt: integer('closed_at', { mode: 'timestamp_ms' }),
-    closedByDevId: integer('closed_by_dev_id').references(() => devs.id),
-  },
-  (table) => [check('months_status_valid', sql`${table.status} IN ('open', 'closed')`)],
-)
+/**
+ * One row per month; `id` is `YYYY-MM`. A month is open from the 20th of the month before; there is
+ * no closing (#7): exporting to the sheet is recorded instead. "Ready" is derived, not stored (#22).
+ */
+export const months = sqliteTable('months', {
+  id: text('id').primaryKey(),
+  openedAt: integer('opened_at', { mode: 'timestamp_ms' })
+    .notNull()
+    .$defaultFn(() => new Date()),
+  /** Last export to the manager's sheet (#7); null until someone exports. */
+  exportedAt: integer('exported_at', { mode: 'timestamp_ms' }),
+  /** Null when the month came from the sheet itself (#16). */
+  exportedByDevId: integer('exported_by_dev_id').references(() => devs.id),
+})
 
 /** Who takes part in a month and with which weight, frozen when the month opens (#18). */
 export const monthParticipants = sqliteTable(

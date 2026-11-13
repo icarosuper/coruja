@@ -52,3 +52,12 @@ export const dayContentSchema = z.object({
   kind: z.enum(DAY_KINDS),
   segments: z.array(segmentSchema).max(MAX_SHIFT_HOURS),
 })
+
+const MAX_RULES = 38 // 7 weekdays + 31 days of the month
+export const rulesBodySchema = z.object({ rules: z.array(preferenceRuleSchema).max(MAX_RULES) })
+
+export const absenceBodySchema = z.object({
+  fromDate: dateSchema,
+  toDate: dateSchema,
+  note: z.string().trim().max(200).nullable().default(null),
+})

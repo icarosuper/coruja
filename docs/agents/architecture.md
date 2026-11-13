@@ -5,8 +5,8 @@ How Coruja is put together and what must stay true. Not a symbol list — for "w
 
 **Status:** the **database schema**, the pure **shift rules** (holidays, day kinds, hours by
 calendar month, segment validation), the **scheduler**, the **sheet reader** (Banking roster out of
-the sheet exported as CSV) and the **API** (auth, devs, profile, months: open, edit, confirm, close,
-import, sheet diff and sync) exist. No screens yet: the Svelte root is a placeholder.
+the sheet exported as CSV) and the **API** (auth, devs, profile, months: open, edit, confirm, export,
+import, sheet diff and sync) and the **export** to the sheet (Office Script, paste grid) exist. No screens yet: the Svelte root is a placeholder.
 
 ## Deploy shape
 
@@ -74,14 +74,16 @@ open (20th of previous month, cron) ──► suggestion generated from profiles
 reviewing ── dev confirms ──────────────► confirmed (per dev)
       │  └─ dev edits a shift ──────────► every dev whose shifts changed goes back to pending
       ▼
-all devs confirmed ──► "ready": anyone generates the Office Script and runs it in the sheet
-      │
+all devs confirmed ──► "ready": anyone exports (Office Script or paste grid) into the sheet
+      │                  (pending confirmations allowed, with a warning; empty days refused)
       ▼
-closed (manually, by whoever exported) ── still editable to record swaps (no re-export)
+exported (when, by whom) ── edits record swaps, no confirmations; each one counts as a
+                            "change after the export" until someone exports again
 ```
 
-There is no automatic deadline: the month closes when someone closes it. A month with an
-unassigned day never becomes ready. Every change to a shift, in any state, goes to the change log
+There is no deadline and no closing
+([decisions.md #26](decisions.md#26-months-are-never-closed-exports-are-recorded)). A month with an
+unassigned day never becomes ready and cannot be exported. Every change to a shift, in any state, goes to the change log
 ([decisions.md #21](decisions.md#21-every-roster-change-is-logged)).
 
 ### Scheduler
@@ -112,6 +114,18 @@ columns by date and by the "Banking" label, accepts month-first or day-first dat
 
 Checked against the November 2026 export: every dev's hours match the sheet's HORAS column.
 
+### Writing to the sheet (export)
+
+`src/sheet/export.ts`: `bankingCells` turns the month's shifts (and the previous month's last one,
+which fills the morning of day 1) into the Banking cell of every calendar hour — a nickname, `''`
+for office hours of a workday (clears a stale name) or `null` (leave it). `officeScript` embeds
+those cells in an Office Script that finds the date row (Excel serial dates, or text day-first or
+month-first), the "Banking" label under each date and the hour rows, refuses a tab that does not
+have every date of the month, never writes over "Expediente" and logs what it changed.
+`pasteGrid` is the fallback: the sheet's layout with only the Banking cells filled, to paste with
+*Skip blanks*. The tests run the generated script against an in-memory sheet and read the result
+back with `readSheetRoster`.
+
 ### Hour balance
 
 Each month's hours per dev are kept, and the difference to each dev's **expected share** (by
@@ -139,8 +153,8 @@ call `store/` (reads and writes in D1, the domain rules in `src/schedule/` and `
   in `X-Team-Password` instead, without a token (that is how the first dev is created). Tokens are
   `coruja_` + 32 random bytes, stored as SHA-256 hex; the team password is compared by digest.
 - **Admin routes** (team password): add a dev (returns the token, once), rename or (de)activate,
-  replace a token, import a month from the sheet.
-- **Errors**: `{ error: code, ...details }` with a stable English code (`month_closed`,
+  replace a token, edit someone else's profile, import a month from the sheet.
+- **Errors**: `{ error: code, ...details }` with a stable English code (`month_exported`,
   `invalid_segments`, `unknown_nicknames`...). Store code throws `ApiError`; `app.onError` answers
   it. Invalid input is 400 `invalid_request` with zod's `issues`.
 - **Writes are atomic**: one D1 batch per operation (`runBatch`), multi-row inserts chunked under
@@ -150,7 +164,7 @@ call `store/` (reads and writes in D1, the domain rules in `src/schedule/` and `
   opens a month by hand; a month can only be added after the latest one.
 - **Editing days** (`applyDayChanges`) is the single write path for calendar edits and sheet syncs:
   it validates segments (`findSegmentProblem`), skips days left as they were, logs each changed day,
-  and in an open month removes the confirmations of devs whose hours changed. A new day kind
+  and, before the month's first export, removes the confirmations of devs whose hours changed. A new day kind
   changes the hours of everyone on that day.
 - **Sheet**: the web app decodes the CSV (Windows-1252) and sends it as text in JSON. Import and
   diff refuse unreadable files, sheet problems and nicknames that are not devs (matched ignoring
@@ -165,13 +179,13 @@ Defined in `src/worker/db/schema.ts` (first migration: `migrations/0000_init.sql
 | `devs` | nickname, participation weight, active flag, token hash. Never deleted |
 | `preference_rules` | profile rules: (`weekday` 0–6 \| `month_day` 1–31) × (`good` \| `avoid` \| `cant`) |
 | `absences` | planned absences, inclusive date ranges; never overlapping for one dev (`addAbsence` merges) |
-| `months` | `YYYY-MM`, `open`/`closed`, who closed |
+| `months` | `YYYY-MM`, opened at, last export (when, by whom) |
 | `month_participants` | devs of a month with the weight frozen at opening |
 | `days` | one per date = that day's shift; `workday` (15h) / `day_off` (24h), holiday name |
 | `shift_segments` | who covers which hours of a shift (offsets from the shift start) |
 | `confirmations` | per month and dev; composite FK to `month_participants` |
 | `balance_adjustments` | hours added to a balance outside shifts (`joined`, `import`) |
-| `change_log` | every roster change (and confirm, close, import), `before`/`after` as JSON |
+| `change_log` | every roster change (and confirm, export, import), `before`/`after` as JSON |
 
 **Not stored, always computed:** hours per dev per month (from segments, by calendar hour),
 balances (`Σ (actual − expected share) + adjustments`), "ready for export" (all participants

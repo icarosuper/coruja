@@ -92,4 +92,42 @@ describe('devs', () => {
     expect(response.status).toBe(400)
     expect(await response.json()).toMatchObject({ error: 'invalid_request' })
   })
+
+  it("edits someone else's profile with the team password only", async () => {
+    const devs = await addDevs(database.env, [{ nickname: 'owl' }, { nickname: 'hawk' }])
+    const owl = devs.get('owl') as { id: number; token: string }
+    const hawk = devs.get('hawk') as { id: number; token: string }
+    const client = clientFor(database.env)
+    const owlParam = { id: String(owl.id) }
+
+    const asOtherDev = await client.api.devs[':id'].rules.$put(
+      { param: owlParam, json: { rules: [] } },
+      asDev(hawk.token),
+    )
+    expect(asOtherDev.status).toBe(401)
+
+    const rules = [{ kind: 'weekday' as const, value: 0, preference: 'cant' as const }]
+    expect(
+      (await client.api.devs[':id'].rules.$put({ param: owlParam, json: { rules } }, asTeam)).status,
+    ).toBe(200)
+    const added = await client.api.devs[':id'].absences.$post(
+      { param: owlParam, json: { fromDate: '2026-12-01', toDate: '2026-12-05', note: null } },
+      asTeam,
+    )
+    expect(added.status).toBe(201)
+    const absence = await added.json()
+
+    const profile = await (await client.api.devs[':id'].profile.$get({ param: owlParam }, asTeam)).json()
+    expect(profile).toMatchObject({ dev: { nickname: 'owl' }, rules, absences: [absence] })
+    const ownView = await (await client.api.me.$get({}, asDev(owl.token))).json()
+    expect(ownView).toEqual(profile)
+
+    const removed = await client.api.devs[':id'].absences[':absenceId'].$delete(
+      { param: { ...owlParam, absenceId: String(absence.id) } },
+      asTeam,
+    )
+    expect(removed.status).toBe(200)
+    const missingDev = await client.api.devs[':id'].profile.$get({ param: { id: '999' } }, asTeam)
+    expect(missingDev.status).toBe(404)
+  })
 })

@@ -56,7 +56,7 @@ async function withDevIds(database: Database, roster: SheetRoster) {
 }
 
 /**
- * Imports a month from the sheet as already closed (decisions #16): its days and segments, and as
+ * Imports a month from the sheet as already exported: the sheet has it (decisions #16): its days and segments, and as
  * participants every active dev with a weight above 0 plus anyone named in the sheet. Create the
  * devs and set their weights first.
  *
@@ -64,7 +64,7 @@ async function withDevIds(database: Database, roster: SheetRoster) {
  * hours enter as `import` adjustments that give each participant exactly what counting that shift
  * would: its hours minus their weighted share of them.
  */
-export async function importClosedMonth(database: Database, csvText: string) {
+export async function importMonth(database: Database, csvText: string) {
   const roster = readRoster(csvText)
   const monthId = roster.month
   await ensureMonthCanBeAdded(database, monthId)
@@ -81,7 +81,7 @@ export async function importClosedMonth(database: Database, csvText: string) {
 
   const now = new Date()
   await runBatch(database, [
-    database.insert(months).values({ id: monthId, status: 'closed', openedAt: now, closedAt: now }),
+    database.insert(months).values({ id: monthId, openedAt: now, exportedAt: now, exportedByDevId: null }),
     ...insertRows(
       database,
       monthParticipants,

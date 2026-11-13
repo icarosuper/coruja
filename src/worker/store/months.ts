@@ -1,9 +1,10 @@
-import { and, asc, desc, eq, gte, inArray, lte } from 'drizzle-orm'
+import { and, asc, desc, eq, gt, gte, inArray, isNotNull, lte } from 'drizzle-orm'
 import type { BatchItem } from 'drizzle-orm/batch'
 import { monthHoursByDev } from '../../schedule/balance'
 import { addDays, daysOfMonth, type IsoDate, type MonthId, monthOf, nextMonth } from '../../schedule/dates'
 import { suggestRoster } from '../../schedule/scheduler'
 import { type DayKind, defaultCalendar, findSegmentProblem, type Segment } from '../../schedule/shifts'
+import { bankingCells, officeScript, pasteGrid } from '../../sheet/export'
 import type { Database } from '../db/client'
 import {
   absences,
@@ -23,11 +24,20 @@ import { loadShiftDays, loadShiftDaysOn } from './shift-days'
 
 // The month lifecycle (architecture.md, "Month lifecycle"; decisions #7, #20, #21, #22).
 
+/** Log actions that change days; counted as "changes after the export". */
+const DAY_CHANGE_ACTIONS = ['assign', 'split', 'day_kind', 'sync'] as const
+export const EXPORT_FORMATS = ['office_script', 'paste_grid'] as const
+export type ExportFormat = (typeof EXPORT_FORMATS)[number]
+
 export type DayChange = { date: IsoDate; kind: DayKind; segments: Segment<number>[] }
 type LoggedDay = { kind: DayKind; segments: Segment<number>[] }
 
 export async function listMonths(database: Database) {
-  return database.select({ id: months.id, status: months.status }).from(months).orderBy(desc(months.id))
+  const rows = await database
+    .select({ id: months.id, exportedAt: months.exportedAt })
+    .from(months)
+    .orderBy(desc(months.id))
+  return rows.map((row) => ({ id: row.id, exportedAt: row.exportedAt?.getTime() ?? null }))
 }
 
 async function findMonth(database: Database, monthId: MonthId) {
@@ -101,7 +111,7 @@ export async function openMonth(database: Database, monthId: MonthId, actorDevId
 
   const now = new Date()
   await runBatch(database, [
-    database.insert(months).values({ id: monthId, status: 'open', openedAt: now }),
+    database.insert(months).values({ id: monthId, openedAt: now }),
     ...insertRows(
       database,
       monthParticipants,
@@ -133,13 +143,15 @@ export async function monthView(database: Database, monthId: MonthId) {
   const dates = daysOfMonth(monthId)
   const previousDate = addDays(dates[0] ?? '', -1)
 
-  const [shiftDays, participantRows, confirmationRows, devRows, balancesAt] = await Promise.all([
-    loadShiftDays(database, { fromDate: previousDate, toDate: dates.at(-1) ?? '' }),
-    database.select().from(monthParticipants).where(eq(monthParticipants.monthId, monthId)),
-    database.select().from(confirmations).where(eq(confirmations.monthId, monthId)),
-    database.select({ id: devs.id, nickname: devs.nickname }).from(devs),
-    loadBalances(database),
-  ])
+  const [shiftDays, participantRows, confirmationRows, devRows, balancesAt, changesAfterExport] =
+    await Promise.all([
+      loadShiftDays(database, { fromDate: previousDate, toDate: dates.at(-1) ?? '' }),
+      database.select().from(monthParticipants).where(eq(monthParticipants.monthId, monthId)),
+      database.select().from(confirmations).where(eq(confirmations.monthId, monthId)),
+      database.select({ id: devs.id, nickname: devs.nickname }).from(devs),
+      loadBalances(database),
+      countChangesAfter(database, monthId, month.exportedAt),
+    ])
   const nicknameOf = (devId: number) => devRows.find((dev) => dev.id === devId)?.nickname ?? '?'
   const withNicknames = (segments: Segment<number>[]) =>
     segments.map((segment) => ({ ...segment, nickname: nicknameOf(segment.devId) }))
@@ -176,14 +188,17 @@ export async function monthView(database: Database, monthId: MonthId) {
     }))
   const unassignedDates = monthDays.filter((day) => day.segments.length === 0).map((day) => day.date)
   const pendingDevIds = participants.filter((participant) => !participant.confirmed).map((p) => p.devId)
-  const isReady = month.status === 'open' && unassignedDates.length === 0 && pendingDevIds.length === 0
+  const isReady = unassignedDates.length === 0 && pendingDevIds.length === 0
 
   return {
     id: month.id,
-    status: month.status,
     openedAt: month.openedAt.getTime(),
-    closedAt: month.closedAt?.getTime() ?? null,
-    closedByDevId: month.closedByDevId,
+    /** Null until someone exports; `byNickname` is null for a month imported from the sheet. */
+    exported: month.exportedAt && {
+      at: month.exportedAt.getTime(),
+      byNickname: month.exportedByDevId === null ? null : nicknameOf(month.exportedByDevId),
+      changesAfter: changesAfterExport,
+    },
     days: monthDays.map((day) => ({
       date: day.date,
       kind: day.kind,
@@ -206,8 +221,9 @@ export async function monthView(database: Database, monthId: MonthId) {
 /**
  * Applies new kinds and segments to days of the month, atomically. An `edit` comes from the
  * calendar, a `sync` from the sheet (decisions #23). Any dev can be assigned, not only the month's
- * participants: an outsider's hours count against an expected share of zero (decisions #25). In an open month, every dev whose hours
- * changed has to confirm again (#7); a closed month only records the change (#20). Each changed day
+ * participants: an outsider's hours count against an expected share of zero (decisions #25). Before
+ * the export, every dev whose hours changed has to confirm again (#7); after it, the change is only
+ * recorded and counts as a change the sheet does not have yet (#20). Each changed day
  * is logged (#21); days that end up as they were are skipped.
  */
 export async function applyDayChanges(
@@ -272,8 +288,8 @@ export async function applyDayChanges(
     )
   }
 
-  const isOpen = month.status === 'open'
-  const resetsConfirmations = isOpen && devsToReconfirm.size > 0
+  const isExported = month.exportedAt !== null
+  const resetsConfirmations = !isExported && devsToReconfirm.size > 0
   if (resetsConfirmations) {
     statements.push(
       database
@@ -282,7 +298,7 @@ export async function applyDayChanges(
     )
   }
   await runBatch(database, statements)
-  return { changedDates, devsToReconfirm: isOpen ? [...devsToReconfirm].sort((a, b) => a - b) : [] }
+  return { changedDates, devsToReconfirm: isExported ? [] : [...devsToReconfirm].sort((a, b) => a - b) }
 }
 
 export function sortedSegments(segments: Segment<number>[]): Segment<number>[] {
@@ -312,10 +328,11 @@ function logActionOf(source: 'edit' | 'sync', before: LoggedDay, after: LoggedDa
   return isSplit ? 'split' : 'assign'
 }
 
-/** The calling dev confirms the open month's roster (every participant does, #7). */
+/** The calling dev confirms the month's roster (every participant does, #7), until it is exported. */
 export async function confirmMonth(database: Database, monthId: MonthId, devId: number): Promise<void> {
   const month = await findMonth(database, monthId)
-  if (month.status !== 'open') throw new ApiError(409, 'month_closed')
+  const isExported = month.exportedAt !== null
+  if (isExported) throw new ApiError(409, 'month_exported')
   const participant = await database.query.monthParticipants.findFirst({
     where: and(eq(monthParticipants.monthId, monthId), eq(monthParticipants.devId, devId)),
   })
@@ -332,18 +349,58 @@ export async function confirmMonth(database: Database, monthId: MonthId, devId: 
   }
 }
 
-/** Closes the month even with pending confirmations or empty days: the web app warns first (#7, #22). */
-export async function closeMonth(database: Database, monthId: MonthId, devId: number): Promise<void> {
-  const month = await findMonth(database, monthId)
-  if (month.status !== 'open') throw new ApiError(409, 'month_closed')
+/**
+ * Records an export to the manager's sheet and returns it: the Office Script or the grid to paste
+ * (decisions #4). Pending confirmations are allowed, the web app warns first (#7); empty days are
+ * not (#22). Exporting again is how changes made after an export reach the sheet.
+ */
+export async function exportMonth(database: Database, monthId: MonthId, devId: number, format: ExportFormat) {
+  await findMonth(database, monthId)
+  const dates = daysOfMonth(monthId)
+  const previousDate = addDays(dates[0] ?? '', -1)
+  const [shiftDays, devRows] = await Promise.all([
+    loadShiftDays(database, { fromDate: previousDate, toDate: dates.at(-1) ?? '' }),
+    database.select({ id: devs.id, nickname: devs.nickname }).from(devs),
+  ])
+  const monthDays = shiftDays.filter((day) => monthOf(day.date) === monthId)
+  const unassignedDates = monthDays.filter((day) => day.segments.length === 0).map((day) => day.date)
+  const hasUnassignedDays = unassignedDates.length > 0
+  if (hasUnassignedDays) throw new ApiError(409, 'unassigned_days', { dates: unassignedDates })
+
+  const nicknameOf = (devId: number) => devRows.find((dev) => dev.id === devId)?.nickname ?? '?'
+  const byNickname = shiftDays.map((day) => ({
+    ...day,
+    segments: day.segments.map((segment) => ({ ...segment, devId: nicknameOf(segment.devId) })),
+  }))
+  const cells = bankingCells(monthId, byNickname)
+
   const now = new Date()
   await runBatch(database, [
+    database.update(months).set({ exportedAt: now, exportedByDevId: devId }).where(eq(months.id, monthId)),
     database
-      .update(months)
-      .set({ status: 'closed', closedAt: now, closedByDevId: devId })
-      .where(eq(months.id, monthId)),
-    database.insert(changeLog).values({ monthId, actorDevId: devId, action: 'close', createdAt: now }),
+      .insert(changeLog)
+      .values({ monthId, actorDevId: devId, action: 'export', after: { format }, createdAt: now }),
   ])
+  return format === 'office_script'
+    ? { format, script: officeScript(monthId, cells), grid: null }
+    : { format, script: null, grid: pasteGrid(cells) }
+}
+
+/** Day changes logged after `exportedAt`: what the sheet does not have yet. */
+async function countChangesAfter(database: Database, monthId: MonthId, exportedAt: Date | null) {
+  if (exportedAt === null) return 0
+  const rows = await database
+    .select({ id: changeLog.id })
+    .from(changeLog)
+    .where(
+      and(
+        eq(changeLog.monthId, monthId),
+        isNotNull(changeLog.date),
+        inArray(changeLog.action, [...DAY_CHANGE_ACTIONS]),
+        gt(changeLog.createdAt, exportedAt),
+      ),
+    )
+  return rows.length
 }
 
 /** The month's change log, newest first. */

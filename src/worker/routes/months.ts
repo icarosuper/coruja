@@ -5,14 +5,15 @@ import { requireDev, requireTeamPassword } from '../auth'
 import { createDatabase } from '../db/client'
 import {
   applyDayChanges,
-  closeMonth,
   confirmMonth,
+  EXPORT_FORMATS,
+  exportMonth,
   listMonths,
   monthLog,
   monthView,
   openMonth,
 } from '../store/months'
-import { importClosedMonth, sheetDifferences } from '../store/sheet'
+import { importMonth, sheetDifferences } from '../store/sheet'
 import { csvSchema, dateSchema, dayContentSchema, monthIdSchema, validate } from '../validation'
 
 const monthParam = z.object({ month: monthIdSchema })
@@ -22,9 +23,9 @@ export const monthRoutes = new Hono<AppEnv>()
   .get('/', requireDev, async (context) => {
     return context.json(await listMonths(createDatabase(context.env.DB)))
   })
-  /** One-time starting point (decisions #16): the sheet's month, imported closed. */
+  /** One-time starting point (decisions #16): the sheet's month, imported as already exported. */
   .post('/import', requireTeamPassword, validate('json', csvSchema), async (context) => {
-    const imported = await importClosedMonth(createDatabase(context.env.DB), context.req.valid('json').csv)
+    const imported = await importMonth(createDatabase(context.env.DB), context.req.valid('json').csv)
     return context.json(imported, 201)
   })
   .get('/:month', requireDev, validate('param', monthParam), async (context) => {
@@ -101,7 +102,18 @@ export const monthRoutes = new Hono<AppEnv>()
     await confirmMonth(createDatabase(context.env.DB), context.req.valid('param').month, context.var.dev.id)
     return context.json({ ok: true })
   })
-  .post('/:month/close', requireDev, validate('param', monthParam), async (context) => {
-    await closeMonth(createDatabase(context.env.DB), context.req.valid('param').month, context.var.dev.id)
-    return context.json({ ok: true })
-  })
+  .post(
+    '/:month/export',
+    requireDev,
+    validate('param', monthParam),
+    validate('json', z.object({ format: z.enum(EXPORT_FORMATS) })),
+    async (context) => {
+      const exported = await exportMonth(
+        createDatabase(context.env.DB),
+        context.req.valid('param').month,
+        context.var.dev.id,
+        context.req.valid('json').format,
+      )
+      return context.json(exported)
+    },
+  )

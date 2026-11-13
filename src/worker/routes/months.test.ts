@@ -52,6 +52,13 @@ async function editDay(
   )
 }
 
+async function exportAs(nickname: string, month: string, format: 'office_script' | 'paste_grid') {
+  return clientFor(database.env).api.months[':month'].export.$post(
+    { param: { month }, json: { format } },
+    as(nickname),
+  )
+}
+
 async function confirm(month: string, nickname: string) {
   return clientFor(database.env).api.months[':month'].confirm.$post({ param: { month } }, as(nickname))
 }
@@ -59,7 +66,7 @@ async function confirm(month: string, nickname: string) {
 describe('opening a month', () => {
   it('suggests a roster for every day and waits for every participant', async () => {
     const month = await openMonth(DECEMBER)
-    expect(month.status).toBe('open')
+    expect(month.exported).toBeNull()
     expect(month.days).toHaveLength(31)
     expect(month.unassignedDates).toEqual([])
     expect(month.days.find((day) => day.date === '2026-12-25')).toMatchObject({
@@ -187,14 +194,14 @@ describe('editing, confirming and closing', () => {
     ])
   })
 
-  it('closes with pending confirmations; a closed month records swaps without unconfirming', async () => {
+  it('exports with pending confirmations; after it, edits record swaps without unconfirming', async () => {
     const month = await openMonth(DECEMBER)
     await confirm(DECEMBER, 'owl')
-    const close = await clientFor(database.env).api.months[':month'].close.$post(
-      { param: { month: DECEMBER } },
-      as('hawk'),
-    )
-    expect(close.status).toBe(200)
+    const exported = await exportAs('hawk', DECEMBER, 'office_script')
+    expect(exported.status).toBe(200)
+    const body = await exported.json()
+    expect(body.script).toContain('function main(workbook: ExcelScript.Workbook)')
+    expect(body.script).toContain('"2026-12-31"')
     expect((await confirm(DECEMBER, 'kite')).status).toBe(409)
 
     const owlDay = month.days.find(
@@ -202,8 +209,23 @@ describe('editing, confirming and closing', () => {
     )
     await editDay(DECEMBER, owlDay?.date ?? '', { kind: 'workday', devIds: [devOf('owl').id] })
     const after = await viewMonth(DECEMBER)
-    expect(after.status).toBe('closed')
+    expect(after.exported).toMatchObject({ byNickname: 'hawk', changesAfter: 1 })
     expect(after.participants.find((participant) => participant.nickname === 'owl')?.confirmed).toBe(true)
+
+    await exportAs('owl', DECEMBER, 'paste_grid')
+    expect((await viewMonth(DECEMBER)).exported).toMatchObject({ byNickname: 'owl', changesAfter: 0 })
+  })
+
+  it('refuses to export a month with a day nobody took', async () => {
+    const month = await openMonth(DECEMBER)
+    const someDate = month.days[3]?.date ?? ''
+    await clientFor(database.env).api.months[':month'].days[':date'].$put(
+      { param: { month: DECEMBER, date: someDate }, json: { kind: 'workday', segments: [] } },
+      as('owl'),
+    )
+    const response = await exportAs('owl', DECEMBER, 'paste_grid')
+    expect(response.status).toBe(409)
+    expect(await response.json()).toEqual({ error: 'unassigned_days', dates: [someDate] })
   })
 })
 
@@ -215,7 +237,7 @@ describe('the sheet', () => {
   }
   const novemberCsv = buildSheet({ month: '2026-11', bankingAt: bankingByShift(ownerOf) })
 
-  it('imports a closed month and turns the previous month hours into adjustments', async () => {
+  it('imports a month as exported and turns the previous month hours into adjustments', async () => {
     const response = await clientFor(database.env).api.months.import.$post(
       { json: { csv: novemberCsv } },
       asTeam,
@@ -224,7 +246,7 @@ describe('the sheet', () => {
     expect(await response.json()).toEqual({ month: '2026-11', participantCount: 4, unassignedDates: [] })
 
     const november = await viewMonth('2026-11')
-    expect(november.status).toBe('closed')
+    expect(november.exported).toMatchObject({ byNickname: null, changesAfter: 0 })
     const sheetHours = november.participants.reduce((sum, participant) => sum + participant.hours, 0)
     expect(sheetHours).toBe(549 - 9)
     const balances = november.participants.map((participant) => participant.balanceAfter)

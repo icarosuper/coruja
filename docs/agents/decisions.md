@@ -33,6 +33,7 @@ never renumber.
 - [**#23** — Swaps come back from the sheet as a CSV diff (and through MCP)](#23-swaps-come-back-from-the-sheet-as-a-csv-diff-and-through-mcp)
 - [**#24** — The scheduler minimizes one cost; conflicting rules resolve to the most restrictive](#24-the-scheduler-minimizes-one-cost-conflicting-rules-resolve-to-the-most-restrictive)
 - [**#25** — Balances are shares of assigned hours; outsiders expect zero](#25-balances-are-shares-of-assigned-hours-outsiders-expect-zero)
+- [**#26** — Months are never closed: exports are recorded](#26-months-are-never-closed-exports-are-recorded)
 
 ---
 
@@ -132,13 +133,12 @@ no sense with nothing on the calendar. **Every participant of the month confirms
 dev who got no shift. An edit resets the confirmation of every dev whose shifts changed. When
 everyone has confirmed, whoever is last runs the export.
 
-The month is closed manually; there is no automatic deadline. Anyone can edit and close (no admin
-role for this). **Closing does not require every confirmation**: if some are pending, the user sees
-a warning listing who has not confirmed and closes anyway if they want. Swaps after the export can
-be recorded on the closed month (#20).
+There is no deadline and no closing (#26): anyone exports (no admin role for this), and
+**exporting does not require every confirmation**: if some are pending, the user sees who has not
+confirmed and exports anyway if they want. Swaps after the export are recorded on the same month
+(#20).
 
-**Don't "fix" by:** auto-closing at a deadline, or blocking the close button on pending
-confirmations.
+**Don't "fix" by:** adding a deadline, or blocking the export on pending confirmations.
 
 ### 8. Everything runs in one Cloudflare Worker with D1
 
@@ -237,7 +237,7 @@ the app's numbers are the ones the manager sees, and the CSV import uses the sam
 ### 16. The starting balance comes from the November 2026 CSV
 
 The first balance is imported from the November 2026 sheet export (the one this project was
-planned from) as a **full, closed month**: days, segments (Banking column, one cell = one hour,
+planned from) as a **full month, already exported** (the sheet has it): days, segments (Banking column, one cell = one hour,
 nicknames as in the sheet) and participants with their weights. The balance then comes out of the
 same formula as every other month, and the app knows who holds the Nov 30 shift that runs into
 December. The 00:00–08:00 hours of Nov 1 belong to the Oct 31 shift, which is not in the app: they
@@ -293,12 +293,13 @@ their past shifts and the change log keep pointing at them, and they stop being 
 ### 20. Closed months stay editable to record swaps
 
 Swaps keep happening in the Excel sheet after the export. If the app never learns about them, the
-balance drifts from the real hours and the next suggestion is computed on wrong numbers. So a
-closed month can still be edited to record what actually happened; those edits update the balance
-and are logged (#21), but they do not reopen the month or reset confirmations, and nothing is
-exported again.
+balance drifts from the real hours and the next suggestion is computed on wrong numbers. So an
+exported month can still be edited to record what actually happened; those edits update the balance
+and are logged (#21), but they do not reset confirmations. Each one counts as a change the sheet
+may not have yet, until the next export (#26).
 
-**Don't "fix" by:** locking closed months, or reopening the confirmation flow on a post-export edit.
+**Don't "fix" by:** locking exported months, or reopening the confirmation flow on a post-export
+edit.
 
 ### 21. Every roster change is logged
 
@@ -313,8 +314,7 @@ entry, not one per shift.
 
 When nobody can take a day, the scheduler leaves it unassigned and flagged (#6). The month cannot
 become ready and the Office Script is not generated until every day has someone; whoever takes the
-day does it through a normal edit. Closing the month (#7) is still allowed, with the empty days in
-the warning.
+day does it through a normal edit. The API refuses the export (`unassigned_days`) until then.
 
 **Don't "fix" by:** letting the export run with empty Banking cells, or auto-assigning a `cant` day.
 
@@ -368,3 +368,18 @@ exactly what they would get if that shift were stored, so the balances still add
 
 **Don't "fix" by:** computing the share over every shift hour, refusing edits that assign a
 non-participant, or adding the Oct 31 hours to only the dev who worked them.
+
+### 26. Months are never closed: exports are recorded
+
+The first design closed a month by hand once the sheet was filled. "Closed" changed nothing anyone
+could see and only stopped the confirmations, so it was replaced by what it stood for: **the
+export**. Exporting (Office Script or the paste grid, #4) records when and by whom; the month view
+shows it, and counts the day changes logged after it, so "the sheet is out of date, export again"
+is visible. Confirmations stop at the first export: after it, edits record swaps (#20). A month
+imported from the sheet (#16) is born exported.
+
+The calendar shows one month at a time, with arrows and the month in the URL. The default month is
+the current one, and from the 20th on the next one, which is the month being confirmed then.
+
+**Don't "fix" by:** bringing back a "closed" state, or resetting confirmations on an edit made
+after the export.
