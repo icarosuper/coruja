@@ -131,23 +131,23 @@ describe('devs', () => {
     expect(
       (await client.api.devs[':id'].rules.$put({ param: owlParam, json: { rules } }, asTeam)).status,
     ).toBe(200)
-    const added = await client.api.devs[':id'].absences.$post(
-      { param: owlParam, json: { fromDate: '2026-12-01', toDate: '2026-12-05', note: null } },
+    const added = await client.api.devs[':id'].absences.$put(
+      { param: owlParam, json: { fromDate: '2026-12-01', toDate: '2026-12-05', absent: true } },
       asTeam,
     )
-    expect(added.status).toBe(201)
-    const absence = await added.json()
+    expect(added.status).toBe(200)
+    const [absence] = await added.json()
 
     const profile = await (await client.api.devs[':id'].profile.$get({ param: owlParam }, asTeam)).json()
     expect(profile).toMatchObject({ dev: { nickname: 'owl' }, rules, absences: [absence] })
     const ownView = await (await client.api.me.$get({}, asDev(owl.token))).json()
     expect(ownView).toEqual(profile)
 
-    const removed = await client.api.devs[':id'].absences[':absenceId'].$delete(
-      { param: { ...owlParam, absenceId: String(absence.id) } },
+    const cleared = await client.api.devs[':id'].absences.$put(
+      { param: owlParam, json: { fromDate: '2026-12-01', toDate: '2026-12-05', absent: false } },
       asTeam,
     )
-    expect(removed.status).toBe(200)
+    expect(await cleared.json()).toEqual([])
     const missingDev = await client.api.devs[':id'].profile.$get({ param: { id: '999' } }, asTeam)
     expect(missingDev.status).toBe(404)
   })

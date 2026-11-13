@@ -33,10 +33,10 @@ Under `/api`. 🔑 = dev token, 🛡️ = team password.
 | `PATCH /devs/:id` 🛡️ | rename, (de)activate | `updateDev` |
 | `POST /devs/:id/token` 🛡️ | replace the token | `issueToken` |
 | `PUT /devs/:id/weight` 🔑 or 🛡️ | set a participation weight | `setWeight` |
-| `GET /me` 🔑 | own profile: rules, absences | `routes/me.ts` → `store/profile.ts` `loadProfile` |
+| `GET /me` 🔑 | own profile: rules, absences, months that already have a roster | `routes/me.ts` → `store/profile.ts` `loadProfile` |
 | `PUT /me/rules` 🔑 | replace own rules | `replaceRules` |
-| `POST /me/absences`, `DELETE /me/absences/:id` 🔑 | own planned absences; a new one that overlaps or touches others is merged with them into one range | `addAbsence`, `removeAbsence` |
-| `GET /devs/:id/profile`, `PUT /devs/:id/rules`, `POST /devs/:id/absences`, `DELETE /devs/:id/absences/:absenceId` 🛡️ | someone else's profile, edited by an admin | `routes/devs.ts` → `store/profile.ts` |
+| `PUT /me/absences` 🔑 | mark or clear every day of a range as one the dev can't take; answers the merged periods | `setAbsenceDays` |
+| `GET /devs/:id/profile`, `PUT /devs/:id/rules`, `PUT /devs/:id/absences` 🛡️ | someone else's profile, edited by an admin | `routes/devs.ts` → `store/profile.ts` |
 | `GET /months` 🔑 | months and when each was last exported | `routes/months.ts` → `store/months.ts` `listMonths` |
 | `POST /months/:month/open` 🔑 | open with a suggested roster | `openMonth` |
 | `POST /months/:month/regenerate` 🔑 | a new suggestion from today's profiles, before the export and on the newest month; hand edits and confirmations go (#28) | `regenerateMonth` |
@@ -62,7 +62,7 @@ Svelte, in `src/web/`. Shell, header and nav: `App.svelte`; routes: `router.svel
 | Month calendar (grid; list of days on phones), today, "destacar meus dias" | | `month/MonthCalendar.svelte`, `TodayChip.svelte`, `HighlightSwitch.svelte` |
 | Day editor (who, split, 15h/24h, preferences per dev) | | `month/DayEditor.svelte` |
 | Hours and balance, change log | | `month/MonthSidePanel.svelte` |
-| Profile: weight, rules, absences (range picker) | `#/perfil` | `profile/ProfilePage.svelte`, `DateRangePicker.svelte` |
+| Profile: weight, weekday rules, days I can't (tap or drag on two months side by side, one on phones; warning on months with a roster) | `#/perfil` | `profile/ProfilePage.svelte`, `AbsenceCalendar.svelte` |
 | Admin: devs, tokens, sheet import / diff / sync | `#/admin` | `admin/AdminPage.svelte`, `AdminUnlock.svelte` |
 | Someone else's profile, as admin | `#/admin/dev/:id` | `profile/ProfilePage.svelte` with `devId` |
 | `.xlsx` of the paste grid | | `src/web/xlsx.ts` |

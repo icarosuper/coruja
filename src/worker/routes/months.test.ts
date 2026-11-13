@@ -105,12 +105,17 @@ describe('opening a month', () => {
 
   it("lists each active dev's preferences for the month's dates", async () => {
     const client = clientFor(database.env)
-    const fifth = { kind: 'month_day', value: 5, preference: 'good' } as const
-    await client.api.me.rules.$put({ json: { rules: [fifth] } }, as('kite'))
-    await client.api.me.absences.$post({ json: { fromDate: '2026-12-30', toDate: '2027-01-02' } }, as('kite'))
+    const saturdays = { kind: 'weekday', value: 6, preference: 'good' } as const
+    await client.api.me.rules.$put({ json: { rules: [saturdays] } }, as('kite'))
+    await client.api.me.absences.$put(
+      { json: { fromDate: '2026-12-26', toDate: '2027-01-02', absent: true } },
+      as('kite'),
+    )
     const month = await openMonth(DECEMBER)
     const kite = month.preferences.find((entry) => entry.devId === devOf('kite').id)
-    expect(kite?.byDate).toEqual({ '2026-12-05': 'good', '2026-12-30': 'cant', '2026-12-31': 'cant' })
+    const absentDays = ['26', '27', '28', '29', '30', '31'].map((day) => [`2026-12-${day}`, 'cant'])
+    const goodSaturdays = ['05', '12', '19'].map((day) => [`2026-12-${day}`, 'good'])
+    expect(kite?.byDate).toEqual(Object.fromEntries([...goodSaturdays, ...absentDays]))
     expect(month.preferences.find((entry) => entry.devId === devOf('owl').id)?.byDate).toEqual({})
   })
 
@@ -269,8 +274,8 @@ describe('generating the roster again', () => {
     expect(
       (await editDay(DECEMBER, '2026-12-10', { kind: 'day_off', devIds: [devOf('owl').id] })).status,
     ).toBe(200)
-    await clientFor(database.env).api.me.absences.$post(
-      { json: { fromDate: '2026-12-01', toDate: '2026-12-31' } },
+    await clientFor(database.env).api.me.absences.$put(
+      { json: { fromDate: '2026-12-01', toDate: '2026-12-31', absent: true } },
       as('owl'),
     )
     expect((await viewMonth(DECEMBER)).editsAfterSuggestion).toEqual({ dates: 1, byNicknames: ['owl'] })

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { daysOfMonth, weekdayOf } from './dates'
 import type { PreferenceRule } from './preferences'
-import { preferenceOn } from './preferences'
+import { absencesWithDays, preferenceOn } from './preferences'
 import { type SchedulerDev, type SuggestInput, suggestRoster } from './scheduler'
 import { defaultCalendar, monthlyHoursByDev, type ShiftDay } from './shifts'
 
@@ -55,8 +55,8 @@ describe('suggestRoster', () => {
   })
 
   it('leaves a day unassigned when nobody can take it', () => {
-    const cantOn15th: PreferenceRule = { kind: 'month_day', value: 15, preference: 'cant' }
-    const { days, unassignedDates } = suggest(team.map((member) => ({ ...member, rules: [cantOn15th] })))
+    const awayOn15th = [{ fromDate: '2026-11-15', toDate: '2026-11-15' }]
+    const { days, unassignedDates } = suggest(team.map((member) => ({ ...member, absences: awayOn15th })))
     expect(unassignedDates).toEqual(['2026-11-15'])
     expect(days.find((day) => day.date === '2026-11-15')?.segments).toEqual([])
   })
@@ -134,26 +134,62 @@ describe('suggestRoster', () => {
 })
 
 describe('preferenceOn', () => {
-  const rules: PreferenceRule[] = [
-    { kind: 'weekday', value: THURSDAY, preference: 'good' },
-    { kind: 'month_day', value: 5, preference: 'avoid' },
-    { kind: 'month_day', value: 12, preference: 'cant' },
-  ]
+  const rules: PreferenceRule[] = [{ kind: 'weekday', value: THURSDAY, preference: 'good' }]
 
   it('is neutral when no rule matches', () => {
     expect(preferenceOn('2026-11-03', rules, [])).toBeNull()
   })
 
-  it('takes the most restrictive matching rule', () => {
+  it("takes the weekday's rule", () => {
     expect(preferenceOn('2026-11-19', rules, [])).toBe('good') // Thursday
-    expect(preferenceOn('2026-11-05', rules, [])).toBe('avoid') // Thursday + the 5th
-    expect(preferenceOn('2026-11-12', rules, [])).toBe('cant') // Thursday + the 12th
   })
 
-  it('treats a planned absence as cant, both ends included', () => {
+  it('treats an absence as cant, both ends included, over any weekday rule', () => {
     const absences = [{ fromDate: '2026-11-19', toDate: '2026-11-21' }]
-    expect(preferenceOn('2026-11-19', rules, absences)).toBe('cant')
+    expect(preferenceOn('2026-11-19', rules, absences)).toBe('cant') // a good Thursday
     expect(preferenceOn('2026-11-21', rules, absences)).toBe('cant')
     expect(preferenceOn('2026-11-22', rules, absences)).toBeNull()
+  })
+})
+
+describe('absencesWithDays', () => {
+  const day = (date: string) => ({ fromDate: date, toDate: date })
+  const periods = [
+    { fromDate: '2026-12-03', toDate: '2026-12-05' },
+    { fromDate: '2026-12-10', toDate: '2026-12-12' },
+  ]
+
+  it('adds a lone day as its own period', () => {
+    expect(absencesWithDays(periods, day('2026-12-20'), true)).toEqual([...periods, day('2026-12-20')])
+  })
+
+  it('joins a day that touches or bridges periods', () => {
+    expect(absencesWithDays(periods, day('2026-12-06'), true)[0]).toEqual({
+      fromDate: '2026-12-03',
+      toDate: '2026-12-06',
+    })
+    const bridged = absencesWithDays(periods, { fromDate: '2026-12-06', toDate: '2026-12-09' }, true)
+    expect(bridged).toEqual([{ fromDate: '2026-12-03', toDate: '2026-12-12' }])
+  })
+
+  it('splits a period when a day in the middle is cleared', () => {
+    expect(absencesWithDays(periods, day('2026-12-04'), false)).toEqual([
+      day('2026-12-03'),
+      day('2026-12-05'),
+      periods[1],
+    ])
+  })
+
+  it('clears a range across periods and the month boundary', () => {
+    const longTrip = [{ fromDate: '2026-12-28', toDate: '2027-01-04' }]
+    expect(absencesWithDays(longTrip, { fromDate: '2026-12-30', toDate: '2027-01-02' }, false)).toEqual([
+      { fromDate: '2026-12-28', toDate: '2026-12-29' },
+      { fromDate: '2027-01-03', toDate: '2027-01-04' },
+    ])
+  })
+
+  it('changes nothing when the days are already as asked', () => {
+    expect(absencesWithDays(periods, day('2026-12-04'), true)).toEqual(periods)
+    expect(absencesWithDays(periods, day('2026-12-07'), false)).toEqual(periods)
   })
 })

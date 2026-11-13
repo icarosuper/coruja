@@ -97,22 +97,26 @@ VBA — desktop only and needs a macro-enabled file.
 Devs set rules once in their profile and do not fill anything per month. Two kinds of rule, one
 scale:
 
-- **per weekday** and **per day of month**, each `good` / `avoid` / `cant` (no rule = neutral).
-  `avoid` exists so people do not mark `cant` for days they merely dislike, which would make
-  months impossible to fill.
-- **planned absences**: date ranges (vacation, a trip) known before the month opens. Stored apart
-  from the rules because they are periods, not recurring patterns; the scheduler treats them as
-  `cant`.
+- **per weekday**, each `good` / `avoid` / `cant` (no rule = neutral). `avoid` exists so people
+  do not mark `cant` for days they merely dislike, which would make months impossible to fill.
+- **days they can't take** (absences): specific dates, marked on a month calendar by tapping a day
+  or dragging across several (an appointment on Dec 10, a vacation). Stored as merged periods;
+  the scheduler treats them as `cant`. Specific dates are only `cant`: "prefer"/"avoid" on a single
+  date was judged not worth the extra state.
+
+Day-of-month rules ("every 5th") existed at first and were replaced by specific dates (2026-11):
+a commitment on a date is almost always for one month, not every month.
 
 Something that comes up after the month opened is an edit on that month's calendar. Changing the
 profile (rules, absences or weight) while a month is open does not touch that month: it would
-silently undo other devs' confirmations.
+silently undo other devs' confirmations. The profile calendar warns about it on a month that already
+has a roster (the change only counts if the month is regenerated) instead of blocking it.
 
 Considered and left out: holidays as a rule category, "1st weekend of the month"/alternate weeks,
 caps like "at most 2 weekends a month" (participation weight and weekend spread cover it).
 
-**Don't "fix" by:** re-running the scheduler on the open month when a profile changes, or giving
-day-of-month rules a different scale from weekday rules.
+**Don't "fix" by:** re-running the scheduler on the open month when a profile changes, or bringing
+back day-of-month rules.
 
 ### 6. Scheduler: "can't" is hard, everything else is ordered goals
 
@@ -351,8 +355,8 @@ more than any single preference, so a preference only decides between rosters wi
 hours. Strict priority would make preferences almost never matter, since nearly any change moves
 hours a little. The search is deterministic, so the same input gives the same roster.
 
-When a weekday rule and a day-of-month rule hit the same date, the **more restrictive** one wins
-(`cant` > `avoid` > `good`); a planned absence is `cant`.
+A date marked as one the dev can't take is `cant`, whatever the weekday rule says (the **more
+restrictive** wins: `cant` > `avoid` > `good`).
 
 **Don't "fix" by:** making a lower goal a strict tie-breaker of the one above, adding randomness to
 the search, or letting a `good` rule override an `avoid`/`cant` on the same date.

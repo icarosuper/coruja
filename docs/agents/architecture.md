@@ -60,10 +60,9 @@ Each dev has a profile with:
 
 - a **participation weight** (100% by default; the share of hours they should take,
   [decisions.md #18](decisions.md#18-each-dev-has-a-participation-weight));
-- recurring rules **per weekday** and **per day of month** (e.g. "the 5th"), all on one scale:
-  `good` / `avoid` / `cant`, no rule = neutral;
-- **planned absences**: date ranges known in advance (vacation, a trip), treated as `cant` when a
-  month opens.
+- recurring rules **per weekday**, on one scale: `good` / `avoid` / `cant`, no rule = neutral;
+- **days they can't take** (absences): specific dates marked on a calendar, one day or a range
+  (an appointment, a trip, vacation), treated as `cant` when a month opens.
 
 Something that comes up after a month opened is an edit on that month's calendar. A profile change **never** rewrites a month that is already open — it applies to the
 next suggestion ([decisions.md #5](decisions.md#5-preferences-are-profile-rules-and-planned-absences-open-month-exceptions-are-calendar-edits)).
@@ -209,8 +208,8 @@ Defined in `src/worker/db/schema.ts` (first migration: `migrations/0000_init.sql
 | Table | Holds |
 |---|---|
 | `devs` | nickname, participation weight, active flag, token hash. Never deleted |
-| `preference_rules` | profile rules: (`weekday` 0–6 \| `month_day` 1–31) × (`good` \| `avoid` \| `cant`) |
-| `absences` | planned absences, inclusive date ranges; never overlapping for one dev (`addAbsence` merges) |
+| `preference_rules` | profile rules: `weekday` 0–6 × (`good` \| `avoid` \| `cant`) |
+| `absences` | days a dev can't take, inclusive date ranges; never overlapping or touching for one dev (`setAbsenceDays` rewrites them through `absencesWithDays`). `note` is unused, to be dropped |
 | `months` | `YYYY-MM`, opened at, last export (when, by whom) |
 | `month_participants` | devs of a month with the weight frozen at opening |
 | `days` | one per date = that day's shift; `workday` (15h) / `day_off` (24h), holiday name |

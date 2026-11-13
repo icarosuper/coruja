@@ -5,11 +5,12 @@ Navigation guide for Claude Code in this repo. Critical rules are here; the rest
 ## Project
 
 Coruja: the dev team's **on-call (sobreaviso) roster** for the Banking column of the manager's
-monthly Excel sheet. Each dev keeps recurring preferences in a profile ("never on Sundays",
-"Thursday is good", "never on the 5th"). On the 20th the next month opens with a roster already
-suggested from those profiles, balancing hours across devs; each dev confirms it or edits it, and
-once everyone has confirmed, someone runs the generated **Office Script** that fills the manager's
-sheet. It replaces the monthly meeting where the sheet was filled by hand.
+monthly Excel sheet. Each dev keeps weekday preferences in a profile ("never on Sundays",
+"Thursday is good") and marks the specific days they can't take ("Dec 10"). On the 20th the next
+month opens with a roster already suggested from those profiles, balancing hours across devs; each
+dev confirms it or edits it, and once everyone has confirmed, someone runs the generated **Office
+Script** that fills the manager's sheet. It replaces the monthly meeting where the sheet was filled
+by hand.
 
 Infra and Sustentação are out of scope: they keep using the sheet directly.
 

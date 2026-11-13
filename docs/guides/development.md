@@ -69,7 +69,7 @@ bun run suggest scripts/example-team.json
 
 Prints the suggested month as a calendar (`*` = 24h day, `+`/`-` = a good/avoid day for that dev,
 `!` = nobody can take it) and a table of hours against each dev's weighted share. Copy the example,
-change devs, weights, balances, rules (`"sun"`…`"sat"` or a day number), absences and day kinds, and
+change devs, weights, balances, weekday rules (`"sun"`…`"sat"`), absences and day kinds, and
 run it again. Name a file with the real team `something.local.json`: those are gitignored.
 
 ## First deploy

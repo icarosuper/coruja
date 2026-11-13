@@ -1,17 +1,17 @@
 <script lang="ts">
-  // A dev's profile — weight, recurring rules, absences (decisions #5). "Meu perfil", or with `devId`
+  // A dev's profile — weight, weekday rules, days they can't take (decisions #5). "Meu perfil", or with `devId`
   // someone else's, edited from the admin screen with the team password.
   import { untrack } from 'svelte'
   import { toast } from 'svelte-sonner'
   import Skeleton from '$lib/components/ui/skeleton/skeleton.svelte'
-  import type { Preference, PreferenceRule } from '../../schedule/preferences'
+  import { absencesWithDays, type Preference, type PreferenceRule } from '../../schedule/preferences'
   import AdminUnlock from '../AdminUnlock.svelte'
   import { api, asTeam, call } from '../api'
   import { cached, remember } from '../cache.svelte'
-  import { formatBalance, fullDate, NEUTRAL_TEXT, PREFERENCE_TEXT, WEEKDAYS } from '../format'
+  import { formatBalance, NEUTRAL_TEXT, PREFERENCE_TEXT, WEEKDAYS } from '../format'
   import { links } from '../router.svelte'
   import { session } from '../session.svelte'
-  import DateRangePicker from './DateRangePicker.svelte'
+  import AbsenceCalendar from './AbsenceCalendar.svelte'
 
   type Props = { devId?: number }
   let { devId }: Props = $props()
@@ -53,7 +53,7 @@
     } catch (failure) {
       toast.error((failure as Error).message)
     }
-    await rulesSaved // a reload before the rules are saved would bring the old ones back
+    await saved // a reload before the last change is saved would bring the old state back
     await load().catch((failure) => toast.error((failure as Error).message))
   }
 
@@ -87,22 +87,24 @@
    * Saves one after the other, so the last click wins even when answers arrive out of order. The
    * screen already shows the rules: it reloads only when a save fails (decisions #30).
    */
-  let rulesSaved: Promise<void> = Promise.resolve()
-  function saveRules(rules: PreferenceRule[]) {
-    rulesSaved = rulesSaved.then(async () => {
+  let saved: Promise<void> = Promise.resolve()
+  function saveInOrder(save: () => Promise<unknown>) {
+    saved = saved.then(async () => {
       try {
-        const saving =
-          devId === undefined
-            ? call(api.api.me.rules.$put({ json: { rules } }))
-            : call(
-                api.api.devs[':id'].rules.$put({ param: { id: String(devId) }, json: { rules } }, asTeam()),
-              )
-        await saving
+        await save()
       } catch (failure) {
         toast.error((failure as Error).message)
         await load().catch((loadFailure) => toast.error((loadFailure as Error).message))
       }
     })
+  }
+
+  function saveRules(rules: PreferenceRule[]) {
+    saveInOrder(() =>
+      devId === undefined
+        ? call(api.api.me.rules.$put({ json: { rules } }))
+        : call(api.api.devs[':id'].rules.$put({ param: { id: String(devId) }, json: { rules } }, asTeam())),
+    )
   }
 
   function saveWeight(weight: number) {
@@ -125,30 +127,16 @@
     )
   }
 
-  // Overlapping or touching periods are merged by the API into one.
-  function addAbsence(fromDate: string, toDate: string) {
-    act(() =>
+  /** Shows the change at once, like the rules; the API keeps the periods merged the same way. */
+  function setAbsenceDays(fromDate: string, toDate: string, absent: boolean) {
+    if (!profile) return
+    profile.absences = absencesWithDays(profile.absences, { fromDate, toDate }, absent)
+    rememberProfile()
+    const json = { fromDate, toDate, absent }
+    saveInOrder(() =>
       devId === undefined
-        ? call(api.api.me.absences.$post({ json: { fromDate, toDate } }))
-        : call(
-            api.api.devs[':id'].absences.$post(
-              { param: { id: String(devId) }, json: { fromDate, toDate } },
-              asTeam(),
-            ),
-          ),
-    )
-  }
-
-  function removeAbsence(absenceId: number) {
-    act(() =>
-      devId === undefined
-        ? call(api.api.me.absences[':id'].$delete({ param: { id: String(absenceId) } }))
-        : call(
-            api.api.devs[':id'].absences[':absenceId'].$delete(
-              { param: { id: String(devId), absenceId: String(absenceId) } },
-              asTeam(),
-            ),
-          ),
+        ? call(api.api.me.absences.$put({ json }))
+        : call(api.api.devs[':id'].absences.$put({ param: { id: String(devId) }, json }, asTeam())),
     )
   }
 </script>
@@ -188,12 +176,8 @@
       </div>
     </div>
     <div class="space-y-2">
-      <Skeleton class="h-5 w-32" />
-      <div class="grid grid-cols-7 gap-2 sm:grid-cols-[repeat(16,minmax(0,1fr))]">
-        {#each Array.from({ length: 31 }) as _, index (index)}
-          <Skeleton class="h-14" />
-        {/each}
-      </div>
+      <Skeleton class="h-5 w-40" />
+      <Skeleton class="h-80 w-full" />
     </div>
   </div>
 {:else}
@@ -270,43 +254,16 @@
     </section>
 
     <section class="space-y-2">
-      <h2 class="font-medium">Dias do mês</h2>
+      <h2 class="font-medium">Dias que não posso</h2>
       <p class="text-sm text-stone-500">
-        Para compromissos fixos por data ("todo dia 5 tenho aula"). Se um dia da semana e um dia do mês
-        baterem, vale o mais restritivo.
+        Consulta, viagem, férias: nesses dias você não entra na escala. Toque num dia para marcar ou
+        desmarcar; arraste para marcar vários.
       </p>
-      <div class="grid grid-cols-7 gap-2 sm:grid-cols-[repeat(16,minmax(0,1fr))]">
-        {#each Array.from({ length: 31 }, (_, index) => index + 1) as day (day)}
-          {@render ruleButton('month_day', day, String(day))}
-        {/each}
-      </div>
-    </section>
-
-    <section class="space-y-2">
-      <h2 class="font-medium">Ausências</h2>
-      <p class="text-sm text-stone-500">Férias, viagens: nesses dias você não entra na escala.</p>
-      <div class="flex flex-wrap items-center gap-2">
-        {#each profile.absences as absence (absence.id)}
-          <span
-            class="inline-flex items-center gap-2 rounded-full bg-stone-800 py-1 pr-2 pl-3 text-sm text-white"
-          >
-            {fullDate(absence.fromDate)}
-            → {fullDate(absence.toDate)}
-            {#if absence.note}
-              <span class="text-stone-300">· {absence.note}</span>
-            {/if}
-            <button
-              type="button"
-              aria-label="Remover ausência"
-              class="rounded-full px-1 text-stone-300 hover:text-white"
-              onclick={() => removeAbsence(absence.id)}
-            >
-              ✕
-            </button>
-          </span>
-        {/each}
-        <DateRangePicker onPick={addAbsence} />
-      </div>
+      <AbsenceCalendar
+        absences={profile.absences}
+        rosterMonths={profile.rosterMonths}
+        onChange={setAbsenceDays}
+      />
     </section>
   </div>
 {/if}

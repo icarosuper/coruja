@@ -60,7 +60,7 @@ export const preferenceRules = sqliteTable(
       .notNull()
       .references(() => devs.id),
     kind: text('kind', { enum: PREFERENCE_RULE_KINDS }).notNull(),
-    /** 0–6 (Sunday = 0) for `weekday`, 1–31 for `month_day`. */
+    /** 0–6 (Sunday = 0) for `weekday`. */
     value: integer('value').notNull(),
     preference: text('preference', { enum: PREFERENCES }).notNull(),
   },
@@ -68,13 +68,16 @@ export const preferenceRules = sqliteTable(
     primaryKey({ columns: [table.devId, table.kind, table.value] }),
     check(
       'preference_rules_value_in_range',
-      sql`(${table.kind} = 'weekday' AND ${table.value} BETWEEN 0 AND 6) OR (${table.kind} = 'month_day' AND ${table.value} BETWEEN 1 AND 31)`,
+      sql`${table.kind} = 'weekday' AND ${table.value} BETWEEN 0 AND 6`,
     ),
     check('preference_rules_preference_valid', sql`${table.preference} IN ('good', 'avoid', 'cant')`),
   ],
 )
 
-/** Planned absences (#5): treated as `cant` when a month opens. Dates are `YYYY-MM-DD`, inclusive. */
+/**
+ * Days a dev can't take (#5): treated as `cant` when a month opens. Dates are `YYYY-MM-DD`, inclusive;
+ * one dev's periods never overlap or touch (`absencesWithDays`).
+ */
 export const absences = sqliteTable(
   'absences',
   {
@@ -84,6 +87,7 @@ export const absences = sqliteTable(
       .references(() => devs.id),
     fromDate: text('from_date').notNull(),
     toDate: text('to_date').notNull(),
+    /** Unused since absences are marked day by day; dropped in a later deploy (decisions #17). */
     note: text('note'),
   },
   (table) => [

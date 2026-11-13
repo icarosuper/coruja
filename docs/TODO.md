@@ -36,6 +36,9 @@ editable closed months, change log, unassigned days (#18–#22); swap sync via C
 
 After the MVP is live:
 
+- **Drop `absences.note`** (unused since absences are marked day by day) in a deploy after the one
+  that stopped reading it (decisions #17).
+
 2. **Outlook `.ics` feed** per dev. Undecided: how the feed URL authenticates (a per-dev feed secret
    that can be replaced, not the dev token), where the link shows (a card on the profile), what goes
    in (own shifts, one event per shift, open months).

@@ -3,15 +3,13 @@
 //
 //   bun run suggest scripts/example-team.json
 //
-// File format: see scripts/example-team.json. Rules are weekdays ("sun"…"sat") or days of the month
-// (1–31). Keep files with the real team as `*.local.json` (gitignored): real names stay out of the repo.
+// File format: see scripts/example-team.json. Rules are weekdays ("sun"…"sat"); days a dev can't
+// take are absences, `[from, to]` inclusive. Keep files with the real team as `*.local.json` (gitignored): real names stay out of the repo.
 
 import { daysOfMonth, type IsoDate, weekdayOf } from '../src/schedule/dates'
 import { type Preference, type PreferenceRule, preferenceOn } from '../src/schedule/preferences'
 import { type SchedulerDev, suggestRoster } from '../src/schedule/scheduler'
 import { type DayKind, defaultCalendar, monthlyHoursByDev, type ShiftDay } from '../src/schedule/shifts'
-
-type RuleValue = string | number
 
 type TeamFile = {
   month: string
@@ -23,25 +21,23 @@ type TeamFile = {
     nickname: string
     weight?: number
     balance?: number
-    cant?: RuleValue[]
-    avoid?: RuleValue[]
-    good?: RuleValue[]
+    cant?: string[]
+    avoid?: string[]
+    good?: string[]
     absences?: Array<[IsoDate, IsoDate]>
   }>
 }
 
 const WEEKDAY_NAMES = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat']
 
-function toRule(value: RuleValue, preference: Preference): PreferenceRule {
-  if (typeof value === 'number') return { kind: 'month_day', value, preference }
+function toRule(value: string, preference: Preference): PreferenceRule {
   const weekday = WEEKDAY_NAMES.indexOf(value.toLowerCase())
-  if (weekday < 0)
-    throw new Error(`Unknown weekday "${value}": use ${WEEKDAY_NAMES.join(', ')} or a day number`)
+  if (weekday < 0) throw new Error(`Unknown weekday "${value}": use ${WEEKDAY_NAMES.join(', ')}`)
   return { kind: 'weekday', value: weekday, preference }
 }
 
 function toSchedulerDev(dev: TeamFile['devs'][number]): SchedulerDev<string> {
-  const rulesOf = (values: RuleValue[] | undefined, preference: Preference) =>
+  const rulesOf = (values: string[] | undefined, preference: Preference) =>
     (values ?? []).map((value) => toRule(value, preference))
   return {
     id: dev.nickname,

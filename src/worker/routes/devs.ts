@@ -4,9 +4,9 @@ import type { AppEnv } from '../app-env'
 import { requireDevOrTeamPassword, requireTeamPassword } from '../auth'
 import { createDatabase } from '../db/client'
 import { createDev, issueToken, listDevs, setWeight, updateDev } from '../store/devs'
-import { addAbsence, loadProfile, removeAbsence, replaceRules } from '../store/profile'
+import { loadProfile, replaceRules, setAbsenceDays } from '../store/profile'
 import {
-  absenceBodySchema,
+  absenceDaysBodySchema,
   idSchema,
   nicknameSchema,
   rulesBodySchema,
@@ -77,25 +77,15 @@ export const devRoutes = new Hono<AppEnv>()
       return context.json({ ok: true })
     },
   )
-  .post(
+  .put(
     '/:id/absences',
     requireTeamPassword,
     validate('param', idParam),
-    validate('json', absenceBodySchema),
+    validate('json', absenceDaysBodySchema),
     async (context) => {
       const database = createDatabase(context.env.DB)
       const { id } = context.req.valid('param')
       await loadProfile(database, id)
-      return context.json(await addAbsence(database, id, context.req.valid('json')), 201)
-    },
-  )
-  .delete(
-    '/:id/absences/:absenceId',
-    requireTeamPassword,
-    validate('param', idParam.extend({ absenceId: idSchema })),
-    async (context) => {
-      const { id, absenceId } = context.req.valid('param')
-      await removeAbsence(createDatabase(context.env.DB), id, absenceId)
-      return context.json({ ok: true })
+      return context.json(await setAbsenceDays(database, id, context.req.valid('json')))
     },
   )

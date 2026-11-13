@@ -6,7 +6,7 @@
     { "nickname": "owl", "cant": ["sun"], "good": ["thu"] },
     { "nickname": "hawk", "avoid": ["sat", "sun"] },
     { "nickname": "kite", "balance": 12, "absences": [["2026-12-20", "2026-12-31"]] },
-    { "nickname": "wren", "cant": [24, 25] },
+    { "nickname": "wren", "absences": [["2026-12-24", "2026-12-25"]] },
     { "nickname": "lark", "good": ["fri", "sat"] },
     { "nickname": "swift", "balance": -8 },
     { "nickname": "finch", "weight": 50, "cant": ["mon", "tue"] },
