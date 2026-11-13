@@ -164,7 +164,7 @@ Defined in `src/worker/db/schema.ts` (first migration: `migrations/0000_init.sql
 |---|---|
 | `devs` | nickname, participation weight, active flag, token hash. Never deleted |
 | `preference_rules` | profile rules: (`weekday` 0–6 \| `month_day` 1–31) × (`good` \| `avoid` \| `cant`) |
-| `absences` | planned absences, inclusive date ranges |
+| `absences` | planned absences, inclusive date ranges; never overlapping for one dev (`addAbsence` merges) |
 | `months` | `YYYY-MM`, `open`/`closed`, who closed |
 | `month_participants` | devs of a month with the weight frozen at opening |
 | `days` | one per date = that day's shift; `workday` (15h) / `day_off` (24h), holiday name |

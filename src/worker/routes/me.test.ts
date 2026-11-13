@@ -62,6 +62,24 @@ describe('profile', () => {
     expect((await (await client.api.me.$get({}, asDev(token))).json()).absences).toEqual([])
   })
 
+  it('merges an absence that overlaps or touches others into one', async () => {
+    const client = clientFor(database.env)
+    const add = (fromDate: string, toDate: string, note: string | null = null) =>
+      client.api.me.absences.$post({ json: { fromDate, toDate, note } }, asDev(token))
+    await add('2026-12-03', '2026-12-05', 'médico')
+    await add('2026-12-03', '2026-12-05')
+    await add('2026-12-10', '2026-12-12')
+    await add('2026-12-20', '2026-12-22')
+    const merged = await (await add('2026-12-01', '2026-12-09', 'viagem')).json()
+
+    expect(merged).toMatchObject({ fromDate: '2026-12-01', toDate: '2026-12-12', note: 'médico; viagem' })
+    const { absences } = await (await client.api.me.$get({}, asDev(token))).json()
+    expect(absences.map((absence) => [absence.fromDate, absence.toDate])).toEqual([
+      ['2026-12-01', '2026-12-12'],
+      ['2026-12-20', '2026-12-22'],
+    ])
+  })
+
   it('refuses an absence that ends before it starts', async () => {
     const response = await clientFor(database.env).api.me.absences.$post(
       { json: { fromDate: '2026-12-20', toDate: '2026-12-10' } },

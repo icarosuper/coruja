@@ -1,6 +1,6 @@
-import { and, asc, eq } from 'drizzle-orm'
+import { and, asc, eq, inArray } from 'drizzle-orm'
 import type { IsoDate } from '../../schedule/dates'
-import type { PreferenceRule } from '../../schedule/preferences'
+import { absencesMergedWith, type PreferenceRule } from '../../schedule/preferences'
 import type { Database } from '../db/client'
 import { absences, devs, preferenceRules } from '../db/schema'
 import { ApiError } from '../errors'
@@ -55,6 +55,10 @@ export async function replaceRules(
   ])
 }
 
+/**
+ * Adds an absence. One that overlaps or touches existing ones replaces them with a single range
+ * covering all of them (their notes kept), so the profile never lists the same day twice.
+ */
 export async function addAbsence(
   database: Database,
   devId: number,
@@ -62,10 +66,22 @@ export async function addAbsence(
 ) {
   const isBackwards = absence.fromDate > absence.toDate
   if (isBackwards) throw new ApiError(422, 'absence_ends_before_it_starts')
-  const [created] = await database
+
+  const existing = await database.select().from(absences).where(eq(absences.devId, devId))
+  const { merged, absorbed } = absencesMergedWith(existing, absence)
+  const notes = [...absorbed.map((absorbedAbsence) => absorbedAbsence.note), absence.note]
+  const note = [...new Set(notes.filter((text) => text !== null && text !== ''))].join('; ') || null
+
+  const absorbedIds = absorbed.map((absorbedAbsence) => absorbedAbsence.id)
+  const insert = database
     .insert(absences)
-    .values({ devId, ...absence })
+    .values({ devId, ...merged, note })
     .returning({ id: absences.id, fromDate: absences.fromDate, toDate: absences.toDate, note: absences.note })
+  const hasAbsorbed = absorbedIds.length > 0
+  const insertedRows = hasAbsorbed
+    ? (await database.batch([database.delete(absences).where(inArray(absences.id, absorbedIds)), insert]))[1]
+    : await insert
+  const [created] = insertedRows
   if (!created) throw new Error('Insert returned no absence')
   return created
 }

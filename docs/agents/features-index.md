@@ -32,7 +32,7 @@ Under `/api`. 🔑 = dev token, 🛡️ = team password.
 | `PUT /devs/:id/weight` 🔑 | set a participation weight | `setWeight` |
 | `GET /me` 🔑 | own profile: rules, absences | `routes/me.ts` → `store/profile.ts` `loadProfile` |
 | `PUT /me/rules` 🔑 | replace own rules | `replaceRules` |
-| `POST /me/absences`, `DELETE /me/absences/:id` 🔑 | own planned absences | `addAbsence`, `removeAbsence` |
+| `POST /me/absences`, `DELETE /me/absences/:id` 🔑 | own planned absences; a new one that overlaps or touches others is merged with them into one range | `addAbsence`, `removeAbsence` |
 | `GET /months` 🔑 | months and status | `routes/months.ts` → `store/months.ts` `listMonths` |
 | `POST /months/:month/open` 🔑 | open with a suggested roster | `openMonth` |
 | `GET /months/:month` 🔑 | calendar, hours, balances, confirmations, readiness | `monthView` |
