@@ -182,8 +182,11 @@ call `store/` (reads and writes in D1, the domain rules in `src/schedule/` and `
 A Svelte 5 SPA in `src/web/`, served by the same Worker as static assets
 ([decisions.md #27](decisions.md#27-screens-hash-router-shadcn-svelte-dark-mode-by-redefining-the-palette)).
 Hash routes: `#/entrar`, `#/mes/YYYY-MM` (`#/mes` = the default month: the current one, the next
-from the 20th on), `#/perfil`, `#/admin`, `#/admin/dev/:id`. Each screen loads what it shows and
-reloads after every action; there is no client cache.
+from the 20th on), `#/perfil`, `#/admin`, `#/admin/dev/:id`. Each screen loads what it shows in one
+wave of parallel requests and reloads after every action, except the profile's rule buttons, which
+save in order and reload only on a failure. The last answer of each screen stays in memory
+(`src/web/cache.svelte.ts`, forgotten on sign-out and admin lock): a screen shown again appears at
+once and refreshes; one never loaded shows skeletons (decisions #30).
 
 - **Sign-in:** the dev pastes their token once; it is checked with `GET /me` and kept in
   `localStorage`. A token the API refuses signs out. Admin screens ask for the team password, check

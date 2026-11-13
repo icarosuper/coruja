@@ -1,10 +1,12 @@
 <script lang="ts">
   // One month: header with arrows and actions, the calendar, hours and the log (decisions #26).
+  import { untrack } from 'svelte'
   import { toast } from 'svelte-sonner'
   import { defaultMonth, opensOn } from '../../schedule/calendar'
   import { type MonthId, monthOf, nextMonth, previousMonth } from '../../schedule/dates'
   import type { DayKind, Segment } from '../../schedule/shifts'
-  import { api, call } from '../api'
+  import { ApiFailure, api, call } from '../api'
+  import { cached, remember } from '../cache.svelte'
   import { today } from '../calendar'
   import { dayLabel } from '../format'
   import { links } from '../router.svelte'
@@ -16,6 +18,7 @@
   import MonthCalendar from './MonthCalendar.svelte'
   import MonthHeader from './MonthHeader.svelte'
   import MonthSidePanel from './MonthSidePanel.svelte'
+  import MonthSkeleton from './MonthSkeleton.svelte'
   import RegenerateDialog from './RegenerateDialog.svelte'
   import TodayChip from './TodayChip.svelte'
   import type { Dev, LogEntry, MonthDay, MonthSummary, MonthView } from './types'
@@ -24,11 +27,22 @@
   let { month }: Props = $props()
 
   const todayDate = today()
-  let months = $state<MonthSummary[] | null>(null)
-  let view = $state<MonthView | null>(null)
-  let todayView = $state<MonthView | null>(null)
-  let devs = $state<Dev[]>([])
-  let log = $state<LogEntry[]>([])
+  const todayMonth = monthOf(todayDate)
+  // App re-creates the page for each month ({#key}), so the month never changes under it.
+  const cacheKey = untrack(() => `month:${month}`)
+  type MonthPageAnswers = {
+    months: MonthSummary[]
+    devs: Dev[]
+    view: MonthView | null
+    log: LogEntry[]
+    todayView: MonthView | null
+  }
+  const remembered = cached<MonthPageAnswers>(cacheKey)
+  let months = $state<MonthSummary[] | null>(remembered?.months ?? null)
+  let view = $state<MonthView | null>(remembered?.view ?? null)
+  let todayView = $state<MonthView | null>(remembered?.todayView ?? null)
+  let devs = $state<Dev[]>(remembered?.devs ?? [])
+  let log = $state<LogEntry[]>(remembered?.log ?? [])
   let editing = $state<MonthDay | null>(null)
   let onlyMine = $state(false)
   let isRegenerateOpen = $state(false)
@@ -37,27 +51,42 @@
 
   const monthParam = () => ({ param: { month } })
 
+  /** Null for a month that does not exist yet, so it can be asked for together with the month list. */
+  async function unlessMonthMissing<Answer>(request: Promise<Answer>): Promise<Answer | null> {
+    try {
+      return await request
+    } catch (failure) {
+      const isMonthMissing = failure instanceof ApiFailure && failure.code === 'month_not_found'
+      if (isMonthMissing) return null
+      throw failure
+    }
+  }
+
+  /** Everything in one round trip (decisions #30): each wave of requests costs a trip to the US. */
   async function load() {
-    const [monthList, devList] = await Promise.all([call(api.api.months.$get()), call(api.api.devs.$get())])
-    months = monthList
-    devs = devList
-    const exists = monthList.some((summary) => summary.id === month)
-    const [monthView, monthLog] = exists
-      ? await Promise.all([
-          call(api.api.months[':month'].$get(monthParam())),
-          call(api.api.months[':month'].log.$get(monthParam())),
-        ])
-      : [null, []]
-    view = monthView
-    log = monthLog
-    const todayMonth = monthOf(todayDate)
-    const hasTodayMonth = monthList.some((summary) => summary.id === todayMonth)
-    todayView =
-      todayMonth === month
-        ? monthView
-        : hasTodayMonth
-          ? await call(api.api.months[':month'].$get({ param: { month: todayMonth } }))
-          : null
+    const isTodayMonth = todayMonth === month
+    const [monthList, devList, monthView, monthLog, todayMonthView] = await Promise.all([
+      call(api.api.months.$get()),
+      call(api.api.devs.$get()),
+      unlessMonthMissing(call(api.api.months[':month'].$get(monthParam()))),
+      unlessMonthMissing(call(api.api.months[':month'].log.$get(monthParam()))),
+      isTodayMonth
+        ? null
+        : unlessMonthMissing(call(api.api.months[':month'].$get({ param: { month: todayMonth } }))),
+    ])
+    const answers: MonthPageAnswers = {
+      months: monthList,
+      devs: devList,
+      view: monthView,
+      log: monthLog ?? [],
+      todayView: isTodayMonth ? monthView : todayMonthView,
+    }
+    remember(cacheKey, answers)
+    months = answers.months
+    devs = answers.devs
+    view = answers.view
+    log = answers.log
+    todayView = answers.todayView
   }
 
   /** Runs an action, shows its error as a toast and reloads the month either way. */
@@ -146,7 +175,7 @@
   {/if}
 
   {#if months === null}
-    <p class="text-sm text-stone-500">Carregando…</p>
+    <MonthSkeleton />
   {:else if view === null}
     <div class="mx-auto max-w-xl rounded-2xl border border-dashed border-stone-300 bg-white p-8 text-center">
       <div class="text-4xl">🗓️</div>

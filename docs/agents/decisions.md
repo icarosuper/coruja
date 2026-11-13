@@ -5,7 +5,7 @@ Choices that look wrong (or arbitrary) but are intentional. Read before "fixing"
 ## Index
 
 Entries are **self-contained**: read only the one you were pointed at. Cite by **anchor**, never by
-line number. A new entry takes the **next number** (highest today is **#29**) plus one line here;
+line number. A new entry takes the **next number** (highest today is **#30**) plus one line here;
 never renumber.
 
 - [**#1** — Only the dev team's Banking column; devs are nicknames](#1-only-the-dev-teams-banking-column-devs-are-nicknames)
@@ -37,6 +37,7 @@ never renumber.
 - [**#27** — Screens: hash router, shadcn-svelte, dark mode by redefining the palette](#27-screens-hash-router-shadcn-svelte-dark-mode-by-redefining-the-palette)
 - [**#28** — Any dev can generate an open month's roster again, from scratch](#28-any-dev-can-generate-an-open-months-roster-again-from-scratch)
 - [**#29** — The Worker runs next to D1, not next to the user](#29-the-worker-runs-next-to-d1-not-next-to-the-user)
+- [**#30** — Screens hide the round trip: one wave, the last answer in memory, skeletons](#30-screens-hide-the-round-trip-one-wave-the-last-answer-in-memory-skeletons)
 
 ---
 
@@ -449,3 +450,22 @@ extra query in sequence now costs ~5 ms instead of ~135 ms. Static assets are st
 **Don't "fix" by:** removing the placement to make `/api/health` faster, or moving the database
 without changing the region to match.
 
+### 30. Screens hide the round trip: one wave, the last answer in memory, skeletons
+
+With the Worker next to D1 (#29), every request from Brazil costs one trip to the US (~170 ms on
+an open connection) however few queries it makes. The screens are built around that cost instead
+of moving the data:
+
+- **One wave per load.** The month page asks for the month list, devs, the month, its log and
+  today's month together; a month that does not exist yet answers `month_not_found` and counts as
+  "not opened", instead of checking the list first and asking in a second wave.
+- **The last answer stays in memory** (`src/web/cache.svelte.ts`), per screen: a screen shown again
+  appears at once and refreshes behind. In memory only, so a page reload starts fresh, and it is
+  forgotten on sign-out and on admin lock. A screen with nothing remembered shows skeletons.
+- **Profile rule buttons do not reload.** The click already shows the new state; saves go out one
+  after the other (a later click must not be overwritten by an earlier answer) and only a failure
+  reloads. Other actions reload after waiting for pending rule saves.
+
+**Don't "fix" by:** keeping the cache in `localStorage` (another dev on the same browser, or a
+stale roster after a day away, would show first), or reloading the profile after each rule click
+(it brought the "half a second to register" back, and rapid clicks flickered).

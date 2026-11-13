@@ -1,10 +1,13 @@
 <script lang="ts">
   // A dev's profile — weight, recurring rules, absences (decisions #5). "Meu perfil", or with `devId`
   // someone else's, edited from the admin screen with the team password.
+  import { untrack } from 'svelte'
   import { toast } from 'svelte-sonner'
+  import Skeleton from '$lib/components/ui/skeleton/skeleton.svelte'
   import type { Preference, PreferenceRule } from '../../schedule/preferences'
   import AdminUnlock from '../AdminUnlock.svelte'
   import { api, asTeam, call } from '../api'
+  import { cached, remember } from '../cache.svelte'
   import { formatBalance, fullDate, NEUTRAL_TEXT, PREFERENCE_TEXT, WEEKDAYS } from '../format'
   import { links } from '../router.svelte'
   import { session } from '../session.svelte'
@@ -15,9 +18,13 @@
 
   const isAdminEdit = $derived(devId !== undefined)
   type Profile = Awaited<ReturnType<typeof loadProfile>>
-  let profile = $state<Profile | null>(null)
-  let balance = $state<number | null>(null)
-  let nickname = $state('')
+  type ProfileAnswers = { profile: Profile; balance: number | null }
+  // App re-creates the page for each dev ({#key}), so `devId` never changes under it.
+  const cacheKey = untrack(() => (devId === undefined ? 'profile:me' : `profile:${devId}`))
+  const remembered = cached<ProfileAnswers>(cacheKey)
+  let profile = $state<Profile | null>(remembered?.profile ?? null)
+  let balance = $state<number | null>(remembered?.balance ?? null)
+  let nickname = $state(remembered?.profile.dev.nickname ?? '')
 
   function loadProfile() {
     return devId === undefined
@@ -33,6 +40,11 @@
     profile = loaded
     nickname = loaded.dev.nickname
     balance = devs.find((dev) => dev.id === loaded.dev.id)?.balance ?? null
+    rememberProfile()
+  }
+
+  function rememberProfile() {
+    if (profile) remember<ProfileAnswers>(cacheKey, { profile, balance })
   }
 
   async function act(action: () => Promise<unknown>) {
@@ -41,6 +53,7 @@
     } catch (failure) {
       toast.error((failure as Error).message)
     }
+    await rulesSaved // a reload before the rules are saved would bring the old ones back
     await load().catch((failure) => toast.error((failure as Error).message))
   }
 
@@ -65,12 +78,31 @@
     const next = CYCLE[(CYCLE.indexOf(ruleOf(kind, value)) + 1) % CYCLE.length] ?? null
     const others = profile.rules.filter((rule) => !(rule.kind === kind && rule.value === value))
     const rules = next ? [...others, { kind, value, preference: next }] : others
-    profile.rules = rules // shows the new state at once; the reload confirms it
-    act(() =>
-      devId === undefined
-        ? call(api.api.me.rules.$put({ json: { rules } }))
-        : call(api.api.devs[':id'].rules.$put({ param: { id: String(devId) }, json: { rules } }, asTeam())),
-    )
+    profile.rules = rules // shows the new state at once
+    rememberProfile()
+    saveRules(rules)
+  }
+
+  /**
+   * Saves one after the other, so the last click wins even when answers arrive out of order. The
+   * screen already shows the rules: it reloads only when a save fails (decisions #30).
+   */
+  let rulesSaved: Promise<void> = Promise.resolve()
+  function saveRules(rules: PreferenceRule[]) {
+    rulesSaved = rulesSaved.then(async () => {
+      try {
+        const saving =
+          devId === undefined
+            ? call(api.api.me.rules.$put({ json: { rules } }))
+            : call(
+                api.api.devs[':id'].rules.$put({ param: { id: String(devId) }, json: { rules } }, asTeam()),
+              )
+        await saving
+      } catch (failure) {
+        toast.error((failure as Error).message)
+        await load().catch((loadFailure) => toast.error((loadFailure as Error).message))
+      }
+    })
   }
 
   function saveWeight(weight: number) {
@@ -140,7 +172,30 @@
 {#if !canLoad}
   <AdminUnlock />
 {:else if profile === null}
-  <p class="text-sm text-stone-500">Carregando…</p>
+  <div class="mx-auto max-w-5xl space-y-8" role="status" aria-busy="true" aria-label="Carregando o perfil">
+    <Skeleton class="h-8 w-64" />
+    <div class="space-y-2">
+      <Skeleton class="h-5 w-28" />
+      <Skeleton class="h-6 w-72" />
+    </div>
+    <Skeleton class="h-14 w-full" />
+    <div class="space-y-2">
+      <Skeleton class="h-5 w-36" />
+      <div class="grid grid-cols-7 gap-2">
+        {#each WEEKDAYS as weekday (weekday)}
+          <Skeleton class="h-14" />
+        {/each}
+      </div>
+    </div>
+    <div class="space-y-2">
+      <Skeleton class="h-5 w-32" />
+      <div class="grid grid-cols-7 gap-2 sm:grid-cols-[repeat(16,minmax(0,1fr))]">
+        {#each Array.from({ length: 31 }) as _, index (index)}
+          <Skeleton class="h-14" />
+        {/each}
+      </div>
+    </div>
+  </div>
 {:else}
   <div class="mx-auto max-w-5xl space-y-8">
     {#if isAdminEdit}

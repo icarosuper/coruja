@@ -2,9 +2,11 @@
   // Admin, behind the team password: devs, tokens, and the manager's sheet (import, diff, sync).
   import type { InferResponseType } from 'hono/client'
   import { toast } from 'svelte-sonner'
+  import Skeleton from '$lib/components/ui/skeleton/skeleton.svelte'
   import type { DayKind } from '../../schedule/shifts'
   import AdminUnlock from '../AdminUnlock.svelte'
   import { api, asTeam, call } from '../api'
+  import { cached, remember } from '../cache.svelte'
   import { colorOf, dayLabel, formatBalance, monthName, segmentLabel } from '../format'
   import type { Dev, MonthSummary } from '../month/types'
   import { links } from '../router.svelte'
@@ -15,8 +17,13 @@
     200
   >['differences']
 
-  let devs = $state<Dev[]>([])
-  let months = $state<MonthSummary[]>([])
+  const CACHE_KEY = 'admin'
+  const SKELETON_ROWS = 4
+  type AdminAnswers = { devs: Dev[]; months: MonthSummary[] }
+  const remembered = cached<AdminAnswers>(CACHE_KEY)
+  let isLoaded = $state(remembered !== null)
+  let devs = $state<Dev[]>(remembered?.devs ?? [])
+  let months = $state<MonthSummary[]>(remembered?.months ?? [])
   let newNickname = $state('')
   let shownToken = $state<{ nickname: string; token: string } | null>(null)
 
@@ -27,9 +34,15 @@
   let appliedCount = $state<number | null>(null)
 
   async function load() {
-    devs = await call(api.api.devs.$get({}, asTeam()))
     // Comparing with the sheet is a dev action (any dev syncs swaps, decisions #23).
-    months = session.token ? await call(api.api.months.$get()) : []
+    const [devList, monthList] = await Promise.all([
+      call(api.api.devs.$get({}, asTeam())),
+      session.token ? call(api.api.months.$get()) : [],
+    ])
+    remember<AdminAnswers>(CACHE_KEY, { devs: devList, months: monthList })
+    devs = devList
+    months = monthList
+    isLoaded = true
     const hasMonths = months.length > 0
     if (hasMonths && sheetAction === IMPORT) sheetAction = months[0]?.id ?? IMPORT
   }
@@ -176,6 +189,13 @@
             </tr>
           </thead>
           <tbody>
+            {#if !isLoaded}
+              {#each Array.from({ length: SKELETON_ROWS }) as _, index (index)}
+                <tr>
+                  <td colspan="6" class="px-4 py-3"><Skeleton class="h-6 w-full" /></td>
+                </tr>
+              {/each}
+            {/if}
             {#each devs as dev (dev.id)}
               <tr
                 class="transition-colors even:bg-stone-50 hover:bg-sky-50 {dev.active
@@ -213,15 +233,22 @@
                 </td>
               </tr>
             {:else}
-              <tr>
-                <td colspan="6" class="px-4 py-6 text-center text-stone-500">Nenhum dev ainda.</td>
-              </tr>
+              {#if isLoaded}
+                <tr>
+                  <td colspan="6" class="px-4 py-6 text-center text-stone-500">Nenhum dev ainda.</td>
+                </tr>
+              {/if}
             {/each}
           </tbody>
         </table>
       </div>
       <!-- Phones: one card per dev instead of the table. -->
       <ul class="space-y-2 md:hidden">
+        {#if !isLoaded}
+          {#each Array.from({ length: SKELETON_ROWS }) as _, index (index)}
+            <li><Skeleton class="h-20 w-full rounded-xl" /></li>
+          {/each}
+        {/if}
         {#each devs as dev (dev.id)}
           <li
             class="rounded-xl border border-stone-200 bg-white p-3 text-sm shadow-sm {dev.active

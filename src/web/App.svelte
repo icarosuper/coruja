@@ -1,5 +1,6 @@
 <script lang="ts">
   import { ModeWatcher, setMode, userPrefersMode } from 'mode-watcher'
+  import Skeleton from '$lib/components/ui/skeleton/skeleton.svelte'
   import { Toaster } from '$lib/components/ui/sonner/index.js'
   import { defaultMonth } from '../schedule/calendar'
   import AdminPage from './admin/AdminPage.svelte'
@@ -73,7 +74,11 @@
         </button>
         <div class="text-sm whitespace-nowrap text-stone-500">
           {#if session.token}
-            {session.me?.nickname ?? '…'}
+            {#if session.me}
+              {session.me.nickname}
+            {:else}
+              <Skeleton class="inline-block h-4 w-16 align-middle" />
+            {/if}
             ·
             <a href={links.signIn} class="underline" onclick={signOut}>sair</a>
           {:else}

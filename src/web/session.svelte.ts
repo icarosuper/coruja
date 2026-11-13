@@ -1,6 +1,8 @@
 // Who is using the app. The personal token stays in this browser (localStorage) until "sair"; the
 // team password only for this tab (sessionStorage), so admin access does not linger.
 
+import { forgetAnswers } from './cache.svelte'
+
 const TOKEN_KEY = 'coruja-token'
 const TEAM_PASSWORD_KEY = 'coruja-team-password'
 
@@ -38,6 +40,7 @@ export function signOut() {
   session.token = null
   session.me = null
   write(() => localStorage, TOKEN_KEY, null)
+  forgetAnswers()
 }
 
 export function unlockAdmin(teamPassword: string) {
@@ -48,4 +51,5 @@ export function unlockAdmin(teamPassword: string) {
 export function lockAdmin() {
   session.teamPassword = null
   write(() => sessionStorage, TEAM_PASSWORD_KEY, null)
+  forgetAnswers()
 }
