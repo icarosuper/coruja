@@ -4,7 +4,13 @@ import { monthHoursByDev } from '../../schedule/balance'
 import { addDays, daysOfMonth, type IsoDate, type MonthId, monthOf, nextMonth } from '../../schedule/dates'
 import { type Preference, preferenceOn } from '../../schedule/preferences'
 import { suggestRoster } from '../../schedule/scheduler'
-import { type DayKind, defaultCalendar, findSegmentProblem, type Segment } from '../../schedule/shifts'
+import {
+  type CalendarDay,
+  type DayKind,
+  defaultCalendar,
+  findSegmentProblem,
+  type Segment,
+} from '../../schedule/shifts'
 import { bankingCells, officeScript, pasteGrid } from '../../sheet/export'
 import type { Database } from '../db/client'
 import {
@@ -27,6 +33,8 @@ import { loadShiftDays, loadShiftDaysOn } from './shift-days'
 
 /** Log actions that change days; counted as "changes after the export". */
 const DAY_CHANGE_ACTIONS = ['assign', 'split', 'day_kind', 'sync'] as const
+/** Log actions that put a whole suggested roster on the month. */
+const SUGGESTION_ACTIONS: readonly string[] = ['generate', 'regenerate']
 export const EXPORT_FORMATS = ['office_script', 'paste_grid'] as const
 export type ExportFormat = (typeof EXPORT_FORMATS)[number]
 
@@ -63,9 +71,92 @@ export async function ensureMonthCanBeAdded(database: Database, monthId: MonthId
  */
 export async function openMonth(database: Database, monthId: MonthId, actorDevId: number | null) {
   await ensureMonthCanBeAdded(database, monthId)
-  const dates = daysOfMonth(monthId)
-  const firstDate = dates[0] ?? ''
-  const lastDate = dates.at(-1) ?? ''
+  const calendar = defaultCalendar(monthId)
+  const { participants, suggestion } = await suggestMonth(database, monthId, calendar)
+
+  const now = new Date()
+  await runBatch(database, [
+    database.insert(months).values({ id: monthId, openedAt: now }),
+    ...insertRows(
+      database,
+      monthParticipants,
+      participants.map((dev) => ({ monthId, devId: dev.id, weight: dev.weight })),
+    ),
+    ...insertRows(
+      database,
+      days,
+      calendar.map((day) => ({ ...day, monthId })),
+    ),
+    ...insertRows(
+      database,
+      shiftSegments,
+      suggestion.days.flatMap((day) => day.segments.map((segment) => ({ date: day.date, ...segment }))),
+    ),
+    database.insert(changeLog).values({
+      monthId,
+      actorDevId,
+      action: 'generate',
+      after: { unassignedDates: suggestion.unassignedDates },
+      createdAt: now,
+    }),
+  ])
+}
+
+/**
+ * Throws the month's roster away and suggests a new one from the profiles, absences, weights and
+ * active devs as they are now, keeping each day's kind (decisions #28). Only before the first
+ * export and while no later month exists: both read this month's hours. Every confirmation goes.
+ */
+export async function regenerateMonth(database: Database, monthId: MonthId, actorDevId: number) {
+  const month = await findMonth(database, monthId)
+  const isExported = month.exportedAt !== null
+  if (isExported) throw new ApiError(409, 'month_exported')
+  const later = await database.select({ id: months.id }).from(months).where(gt(months.id, monthId))
+  const hasLaterMonth = later.length > 0
+  if (hasLaterMonth) throw new ApiError(409, 'later_month_exists')
+
+  const calendar = await database
+    .select({ date: days.date, kind: days.kind, holidayName: days.holidayName })
+    .from(days)
+    .where(eq(days.monthId, monthId))
+    .orderBy(asc(days.date))
+  const { participants, suggestion } = await suggestMonth(database, monthId, calendar)
+
+  const now = new Date()
+  await runBatch(database, [
+    database.delete(shiftSegments).where(
+      inArray(
+        shiftSegments.date,
+        calendar.map((day) => day.date),
+      ),
+    ),
+    // Confirmations reference participants: they go first.
+    database.delete(confirmations).where(eq(confirmations.monthId, monthId)),
+    database.delete(monthParticipants).where(eq(monthParticipants.monthId, monthId)),
+    ...insertRows(
+      database,
+      monthParticipants,
+      participants.map((dev) => ({ monthId, devId: dev.id, weight: dev.weight })),
+    ),
+    ...insertRows(
+      database,
+      shiftSegments,
+      suggestion.days.flatMap((day) => day.segments.map((segment) => ({ date: day.date, ...segment }))),
+    ),
+    database.insert(changeLog).values({
+      monthId,
+      actorDevId,
+      action: 'regenerate',
+      after: { unassignedDates: suggestion.unassignedDates },
+      createdAt: now,
+    }),
+  ])
+}
+
+/** The scheduler's suggestion for `calendar`, from every active dev with a weight above 0. */
+async function suggestMonth(database: Database, monthId: MonthId, calendar: CalendarDay[]) {
+  const firstDate = calendar[0]?.date ?? ''
+  const lastDate = calendar.at(-1)?.date ?? ''
   const previousDate = addDays(firstDate, -1)
 
   const activeDevs = await database
@@ -96,7 +187,6 @@ export async function openMonth(database: Database, monthId: MonthId, actorDevId
     loadShiftDaysOn(database, [previousDate]),
   ])
   const balances = balancesAt(monthId)
-  const calendar = defaultCalendar(monthId)
   const suggestion = suggestRoster({
     month: monthId,
     calendar,
@@ -109,33 +199,7 @@ export async function openMonth(database: Database, monthId: MonthId, actorDevId
       absences: absenceRows.filter((absence) => absence.devId === dev.id),
     })),
   })
-
-  const now = new Date()
-  await runBatch(database, [
-    database.insert(months).values({ id: monthId, openedAt: now }),
-    ...insertRows(
-      database,
-      monthParticipants,
-      participants.map((dev) => ({ monthId, devId: dev.id, weight: dev.weight })),
-    ),
-    ...insertRows(
-      database,
-      days,
-      calendar.map((day) => ({ ...day, monthId })),
-    ),
-    ...insertRows(
-      database,
-      shiftSegments,
-      suggestion.days.flatMap((day) => day.segments.map((segment) => ({ date: day.date, ...segment }))),
-    ),
-    database.insert(changeLog).values({
-      monthId,
-      actorDevId,
-      action: 'generate',
-      after: { unassignedDates: suggestion.unassignedDates },
-      createdAt: now,
-    }),
-  ])
+  return { participants, suggestion }
 }
 
 /** Everything the month's calendar shows: days, participants with hours and balances, readiness. */
@@ -144,16 +208,25 @@ export async function monthView(database: Database, monthId: MonthId) {
   const dates = daysOfMonth(monthId)
   const previousDate = addDays(dates[0] ?? '', -1)
 
-  const [shiftDays, participantRows, confirmationRows, devRows, balancesAt, changesAfterExport, preferences] =
-    await Promise.all([
-      loadShiftDays(database, { fromDate: previousDate, toDate: dates.at(-1) ?? '' }),
-      database.select().from(monthParticipants).where(eq(monthParticipants.monthId, monthId)),
-      database.select().from(confirmations).where(eq(confirmations.monthId, monthId)),
-      database.select({ id: devs.id, nickname: devs.nickname }).from(devs),
-      loadBalances(database),
-      countChangesAfter(database, monthId, month.exportedAt),
-      preferencesOfActiveDevs(database, dates),
-    ])
+  const [
+    shiftDays,
+    participantRows,
+    confirmationRows,
+    devRows,
+    balancesAt,
+    changesAfterExport,
+    preferences,
+    editsAfterSuggestion,
+  ] = await Promise.all([
+    loadShiftDays(database, { fromDate: previousDate, toDate: dates.at(-1) ?? '' }),
+    database.select().from(monthParticipants).where(eq(monthParticipants.monthId, monthId)),
+    database.select().from(confirmations).where(eq(confirmations.monthId, monthId)),
+    database.select({ id: devs.id, nickname: devs.nickname }).from(devs),
+    loadBalances(database),
+    countChangesAfter(database, monthId, month.exportedAt),
+    preferencesOfActiveDevs(database, dates),
+    loadEditsAfterSuggestion(database, monthId),
+  ])
   const nicknameOf = (devId: number) => devRows.find((dev) => dev.id === devId)?.nickname ?? '?'
   const withNicknames = (segments: Segment<number>[]) =>
     segments.map((segment) => ({ ...segment, nickname: nicknameOf(segment.devId) }))
@@ -218,7 +291,38 @@ export async function monthView(database: Database, monthId: MonthId) {
     pendingDevIds,
     isReady,
     preferences,
+    /** Days changed by hand since the roster was last suggested: what generating it again throws away. */
+    editsAfterSuggestion: {
+      dates: editsAfterSuggestion.dates,
+      byNicknames: editsAfterSuggestion.actorDevIds
+        .map(nicknameOf)
+        .sort((a, b) => a.localeCompare(b, 'pt-BR')),
+    },
   }
+}
+
+/** The dates changed, and by whom, after the newest `generate` or `regenerate` of the month. */
+async function loadEditsAfterSuggestion(database: Database, monthId: MonthId) {
+  const rows = await database
+    .select({
+      id: changeLog.id,
+      action: changeLog.action,
+      date: changeLog.date,
+      actorDevId: changeLog.actorDevId,
+    })
+    .from(changeLog)
+    .where(eq(changeLog.monthId, monthId))
+    .orderBy(asc(changeLog.id))
+  const suggestionIds = rows.filter((row) => SUGGESTION_ACTIONS.includes(row.action)).map((row) => row.id)
+  const latestSuggestionId = Math.max(0, ...suggestionIds)
+  const edits = rows.filter(
+    (row) =>
+      row.id > latestSuggestionId &&
+      row.date !== null &&
+      (DAY_CHANGE_ACTIONS as readonly string[]).includes(row.action),
+  )
+  const actorDevIds = [...new Set(edits.map((row) => row.actorDevId).filter((devId) => devId !== null))]
+  return { dates: new Set(edits.map((row) => row.date)).size, actorDevIds }
 }
 
 /**

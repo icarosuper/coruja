@@ -35,6 +35,7 @@ never renumber.
 - [**#25** — Balances are shares of assigned hours; outsiders expect zero](#25-balances-are-shares-of-assigned-hours-outsiders-expect-zero)
 - [**#26** — Months are never closed: exports are recorded](#26-months-are-never-closed-exports-are-recorded)
 - [**#27** — Screens: hash router, shadcn-svelte, dark mode by redefining the palette](#27-screens-hash-router-shadcn-svelte-dark-mode-by-redefining-the-palette)
+- [**#28** — Any dev can generate an open month's roster again, from scratch](#28-any-dev-can-generate-an-open-months-roster-again-from-scratch)
 
 ---
 
@@ -409,3 +410,21 @@ The screens were approved on a throwaway prototype (branch `prototype/screens`, 
 
 **Don't "fix" by:** adding `dark:` classes next to palette classes (they would undo the mirrored
 palette), or adding a colour family without its dark scale in `app.css`.
+
+### 28. Any dev can generate an open month's roster again, from scratch
+
+The suggestion is made when the month opens (#7), so a profile changed after the 20th would only
+count from the next month. Instead, any dev can **generate the roster again** while the month is
+not exported: the scheduler runs with the profiles, absences, weights and active devs as they are
+now (participants and frozen weights are replaced), keeping each day's kind (a bridge day someone
+set stays). Every confirmation goes, and the log records who did it (`regenerate`).
+
+- **From scratch, not around the edits:** days changed by hand are thrown away. The dialog says how
+  many and by whom first (`editsAfterSuggestion` in the month view). Keeping them would need the
+  scheduler to take fixed days, balance worse and be harder to explain.
+- **Any dev, not admin only:** everyone has to confirm again anyway, and the log shows who did it.
+- **Not after the export** (the sheet already has it: changes are swaps then) **nor when a later
+  month exists** (its suggestion and balances read this month's hours).
+
+**Don't "fix" by:** regenerating automatically when a profile changes (it would wipe confirmations
+and edits nobody asked to lose), or keeping hand edits as fixed days without revisiting this entry.

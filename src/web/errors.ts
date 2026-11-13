@@ -34,7 +34,7 @@ export function messageOf(code: string, details: Record<string, unknown>): strin
     case 'later_month_exists':
       return 'Já existe um mês depois desse.'
     case 'month_exported':
-      return 'Esse mês já foi exportado: não há mais confirmações.'
+      return 'Esse mês já foi exportado: agora a escala só muda por trocas.'
     case 'not_participant':
       return 'Você não participa desse mês.'
     case 'unassigned_days': {

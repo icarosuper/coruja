@@ -15,6 +15,7 @@
   import MonthCalendar from './MonthCalendar.svelte'
   import MonthHeader from './MonthHeader.svelte'
   import MonthSidePanel from './MonthSidePanel.svelte'
+  import RegenerateDialog from './RegenerateDialog.svelte'
   import TodayChip from './TodayChip.svelte'
   import type { Dev, LogEntry, MonthDay, MonthSummary, MonthView } from './types'
 
@@ -29,6 +30,7 @@
   let log = $state<LogEntry[]>([])
   let editing = $state<MonthDay | null>(null)
   let onlyMine = $state(false)
+  let isRegenerateOpen = $state(false)
   let exportNotice: { kind: 'script'; script: string; copied: boolean } | { kind: 'grid' } | null =
     $state(null)
 
@@ -91,6 +93,13 @@
   const unconfirm = () => act(() => call(api.api.months[':month'].confirm.$delete(monthParam())))
   const openNow = () => act(() => call(api.api.months[':month'].open.$post(monthParam())))
 
+  /** A new suggestion replaces the roster only before the export and on the newest month (decisions #28). */
+  const canRegenerate = $derived(view !== null && view.exported === null && month === newestMonth)
+  function regenerate() {
+    isRegenerateOpen = false
+    act(() => call(api.api.months[':month'].regenerate.$post(monthParam())))
+  }
+
   async function exportMonth(format: 'office_script' | 'paste_grid') {
     await act(async () => {
       const exported = await call(
@@ -128,6 +137,7 @@
     onConfirm={confirm}
     onUnconfirm={unconfirm}
     onExport={exportMonth}
+    onRegenerate={canRegenerate ? () => (isRegenerateOpen = true) : null}
   />
 
   {#if exportNotice}
@@ -191,4 +201,8 @@
     onSave={(kind, segments) => editing && saveDay(editing.date, kind, segments)}
     onClose={() => (editing = null)}
   />
+{/if}
+
+{#if isRegenerateOpen && view}
+  <RegenerateDialog {view} onConfirm={regenerate} onClose={() => (isRegenerateOpen = false)} />
 {/if}

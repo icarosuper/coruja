@@ -41,6 +41,10 @@
         const holes = after?.unassignedDates?.length ?? 0
         return `abriu o mês com a escala sugerida${holes > 0 ? ` (${holes} sem ninguém)` : ''}`
       }
+      case 'regenerate': {
+        const holes = after?.unassignedDates?.length ?? 0
+        return `gerou a escala de novo com os perfis de hoje${holes > 0 ? ` (${holes} sem ninguém)` : ''}`
+      }
       case 'assign':
       case 'split':
       case 'day_kind':

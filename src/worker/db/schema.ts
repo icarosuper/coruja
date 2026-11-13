@@ -19,6 +19,7 @@ export { DAY_KINDS, PREFERENCE_RULE_KINDS, PREFERENCES }
 export const BALANCE_ADJUSTMENT_REASONS = ['joined', 'import'] as const
 export const CHANGE_LOG_ACTIONS = [
   'generate',
+  'regenerate',
   'assign',
   'split',
   'day_kind',

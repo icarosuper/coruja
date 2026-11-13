@@ -15,8 +15,11 @@
     onConfirm: () => void
     onUnconfirm: () => void
     onExport: (format: 'office_script' | 'paste_grid') => void
+    /** Null when the roster cannot be generated again: exported, or a later month exists. */
+    onRegenerate: (() => void) | null
   }
-  let { month, view, hasPrevious, hasNext, meId, onConfirm, onUnconfirm, onExport }: Props = $props()
+  let { month, view, hasPrevious, hasNext, meId, onConfirm, onUnconfirm, onExport, onRegenerate }: Props =
+    $props()
 
   const pending = $derived(view?.participants.filter((participant) => !participant.confirmed) ?? [])
   const holes = $derived(view?.unassignedDates ?? [])
@@ -118,12 +121,12 @@
           {/if}
         </button>
       {/if}
-      <div class={view.exported || !myParticipation ? 'col-span-2' : ''}>
+      <div class="flex gap-2 {view.exported || !myParticipation ? 'col-span-2' : ''}">
         <DropdownMenu.Root>
           <DropdownMenu.Trigger
             disabled={holes.length > 0}
             title={holes.length > 0 ? 'Todo dia precisa de alguém antes de exportar' : ''}
-            class="h-full w-full rounded-md bg-stone-900 px-3 py-1.5 text-sm text-white disabled:opacity-30"
+            class="h-full min-w-0 flex-1 rounded-md bg-stone-900 px-3 py-1.5 text-sm text-white disabled:opacity-30"
           >
             {view.exported ? 'Exportar de novo' : 'Exportar'}
             ▾
@@ -150,6 +153,25 @@
             </DropdownMenu.Item>
           </DropdownMenu.Content>
         </DropdownMenu.Root>
+        {#if onRegenerate}
+          <DropdownMenu.Root>
+            <DropdownMenu.Trigger
+              aria-label="Mais ações do mês"
+              title="Mais ações do mês"
+              class="h-full rounded-md border border-stone-300 px-3 py-1.5 text-sm hover:bg-stone-100"
+            >
+              ⋯
+            </DropdownMenu.Trigger>
+            <DropdownMenu.Content align="end" class="w-[min(22rem,calc(100vw-2rem))] p-2">
+              <DropdownMenu.Item class="block px-3 py-2" onSelect={onRegenerate}>
+                <span class="font-medium">🔄 Gerar a escala de novo</span>
+                <span class="block text-xs text-stone-500"
+                  >Com os perfis de hoje. Apaga as mudanças feitas à mão.</span
+                >
+              </DropdownMenu.Item>
+            </DropdownMenu.Content>
+          </DropdownMenu.Root>
+        {/if}
       </div>
     </div>
   {/if}

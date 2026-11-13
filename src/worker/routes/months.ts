@@ -12,6 +12,7 @@ import {
   monthLog,
   monthView,
   openMonth,
+  regenerateMonth,
   unconfirmMonth,
 } from '../store/months'
 import { importMonth, sheetDifferences } from '../store/sheet'
@@ -38,6 +39,13 @@ export const monthRoutes = new Hono<AppEnv>()
     const { month } = context.req.valid('param')
     await openMonth(database, month, context.var.dev.id)
     return context.json(await monthView(database, month), 201)
+  })
+  /** A new suggestion from today's profiles, before the first export (decisions #28). */
+  .post('/:month/regenerate', requireDev, validate('param', monthParam), async (context) => {
+    const database = createDatabase(context.env.DB)
+    const { month } = context.req.valid('param')
+    await regenerateMonth(database, month, context.var.dev.id)
+    return context.json(await monthView(database, month))
   })
   .get('/:month/log', requireDev, validate('param', monthParam), async (context) => {
     return context.json(await monthLog(createDatabase(context.env.DB), context.req.valid('param').month))

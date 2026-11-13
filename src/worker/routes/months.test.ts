@@ -256,6 +256,59 @@ describe('editing, confirming and closing', () => {
   })
 })
 
+describe('generating the roster again', () => {
+  const regenerate = (month: string, by = 'hawk') =>
+    clientFor(database.env).api.months[':month'].regenerate.$post({ param: { month } }, as(by))
+
+  it('suggests again from the profiles as they are now, keeping day kinds and dropping confirmations', async () => {
+    await openMonth(DECEMBER)
+    await clientFor(database.env).api.months[':month'].confirm.$post(
+      { param: { month: DECEMBER } },
+      as('kite'),
+    )
+    expect(
+      (await editDay(DECEMBER, '2026-12-10', { kind: 'day_off', devIds: [devOf('owl').id] })).status,
+    ).toBe(200)
+    await clientFor(database.env).api.me.absences.$post(
+      { json: { fromDate: '2026-12-01', toDate: '2026-12-31' } },
+      as('owl'),
+    )
+    expect((await viewMonth(DECEMBER)).editsAfterSuggestion).toEqual({ dates: 1, byNicknames: ['owl'] })
+
+    const response = await regenerate(DECEMBER)
+    expect(response.status).toBe(200)
+    const view = await response.json()
+    const owlHasShifts = view.days.some((day) =>
+      day.segments.some((segment) => segment.devId === devOf('owl').id),
+    )
+    expect(owlHasShifts).toBe(false)
+    expect(view.days.find((day) => day.date === '2026-12-10')?.kind).toBe('day_off')
+    expect(view.participants.every((participant) => !participant.confirmed)).toBe(true)
+    expect(view.editsAfterSuggestion).toEqual({ dates: 0, byNicknames: [] })
+
+    const log = await (
+      await clientFor(database.env).api.months[':month'].log.$get({ param: { month: DECEMBER } }, as('owl'))
+    ).json()
+    expect(log[0]).toMatchObject({ action: 'regenerate', actorNickname: 'hawk' })
+  })
+
+  it('is refused once the month is exported', async () => {
+    await openMonth(DECEMBER)
+    expect((await exportAs('owl', DECEMBER, 'paste_grid')).status).toBe(200)
+    const response = await regenerate(DECEMBER)
+    expect(response.status).toBe(409)
+    expect(await response.json()).toMatchObject({ error: 'month_exported' })
+  })
+
+  it('is refused once a later month is open', async () => {
+    await openMonth(DECEMBER)
+    await openMonth(JANUARY)
+    const response = await regenerate(DECEMBER)
+    expect(response.status).toBe(409)
+    expect(await response.json()).toMatchObject({ error: 'later_month_exists' })
+  })
+})
+
 describe('the sheet', () => {
   const rotation = ['owl', 'hawk', 'kite', 'wren']
   const ownerOf = (shiftDate: IsoDate) => {

@@ -39,7 +39,8 @@ Under `/api`. 🔑 = dev token, 🛡️ = team password.
 | `GET /devs/:id/profile`, `PUT /devs/:id/rules`, `POST /devs/:id/absences`, `DELETE /devs/:id/absences/:absenceId` 🛡️ | someone else's profile, edited by an admin | `routes/devs.ts` → `store/profile.ts` |
 | `GET /months` 🔑 | months and when each was last exported | `routes/months.ts` → `store/months.ts` `listMonths` |
 | `POST /months/:month/open` 🔑 | open with a suggested roster | `openMonth` |
-| `GET /months/:month` 🔑 | calendar, hours, balances, confirmations, readiness, last export and changes after it, each active dev's preferences per date | `monthView` |
+| `POST /months/:month/regenerate` 🔑 | a new suggestion from today's profiles, before the export and on the newest month; hand edits and confirmations go (#28) | `regenerateMonth` |
+| `GET /months/:month` 🔑 | calendar, hours, balances, confirmations, readiness, last export and changes after it, each active dev's preferences per date, hand edits since the suggestion | `monthView` |
 | `GET /months/:month/log` 🔑 | change log, newest first | `monthLog` |
 | `PUT /months/:month/days/:date` 🔑 | edit a day (kind + segments) | `applyDayChanges` (`edit`) |
 | `POST /months/:month/confirm`, `DELETE /months/:month/confirm` 🔑 | confirm as the calling dev, or take it back (until the export) | `confirmMonth`, `unconfirmMonth` |
@@ -57,7 +58,7 @@ Svelte, in `src/web/`. Shell, header and nav: `App.svelte`; routes: `router.svel
 | Screen | Route | Where |
 |---|---|---|
 | Token entry | `#/entrar` | `TokenEntry.svelte` |
-| Month: arrows, state, confirm, export menu | `#/mes`, `#/mes/YYYY-MM` | `month/MonthPage.svelte`, `MonthHeader.svelte`, `ExportNotice.svelte` |
+| Month: arrows, state, confirm, export menu, "⋯" menu to generate the roster again | `#/mes`, `#/mes/YYYY-MM` | `month/MonthPage.svelte`, `MonthHeader.svelte`, `ExportNotice.svelte`, `RegenerateDialog.svelte` |
 | Month calendar (grid; list of days on phones), today, "destacar meus dias" | | `month/MonthCalendar.svelte`, `TodayChip.svelte`, `HighlightSwitch.svelte` |
 | Day editor (who, split, 15h/24h, preferences per dev) | | `month/DayEditor.svelte` |
 | Hours and balance, change log | | `month/MonthSidePanel.svelte` |

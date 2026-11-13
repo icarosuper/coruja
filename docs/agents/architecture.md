@@ -74,7 +74,8 @@ open (20th of previous month, cron) ──► suggestion generated from profiles
       │
       ▼
 reviewing ── dev confirms ──────────────► confirmed (per dev)
-      │  └─ dev edits a shift ──────────► every dev whose shifts changed goes back to pending
+      │  ├─ dev edits a shift ──────────► every dev whose shifts changed goes back to pending
+      │  └─ dev generates it again ─────► new suggestion from today's profiles; everyone pending
       ▼
 all devs confirmed ──► "ready": anyone exports (Office Script or paste grid) into the sheet
       │                  (pending confirmations allowed, with a warning; empty days refused)
@@ -211,7 +212,7 @@ Defined in `src/worker/db/schema.ts` (first migration: `migrations/0000_init.sql
 | `shift_segments` | who covers which hours of a shift (offsets from the shift start) |
 | `confirmations` | per month and dev; composite FK to `month_participants` |
 | `balance_adjustments` | hours added to a balance outside shifts (`joined`, `import`) |
-| `change_log` | every roster change (and confirm, export, import), `before`/`after` as JSON |
+| `change_log` | every roster change (and generate, regenerate, confirm, export, import), `before`/`after` as JSON |
 
 **Not stored, always computed:** hours per dev per month (from segments, by calendar hour),
 balances (`Σ (actual − expected share) + adjustments`), "ready for export" (all participants
