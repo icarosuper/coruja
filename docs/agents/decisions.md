@@ -34,6 +34,7 @@ never renumber.
 - [**#24** — The scheduler minimizes one cost; conflicting rules resolve to the most restrictive](#24-the-scheduler-minimizes-one-cost-conflicting-rules-resolve-to-the-most-restrictive)
 - [**#25** — Balances are shares of assigned hours; outsiders expect zero](#25-balances-are-shares-of-assigned-hours-outsiders-expect-zero)
 - [**#26** — Months are never closed: exports are recorded](#26-months-are-never-closed-exports-are-recorded)
+- [**#27** — Screens: hash router, shadcn-svelte, dark mode by redefining the palette](#27-screens-hash-router-shadcn-svelte-dark-mode-by-redefining-the-palette)
 
 ---
 
@@ -383,3 +384,26 @@ the current one, and from the 20th on the next one, which is the month being con
 
 **Don't "fix" by:** bringing back a "closed" state, or resetting confirmations on an edit made
 after the export.
+
+### 27. Screens: hash router, shadcn-svelte, dark mode by redefining the palette
+
+The screens were approved on a throwaway prototype (branch `prototype/screens`) before being built.
+
+- **Router:** a hash router of a few lines (`src/web/router.svelte.ts`). Five routes do not need a
+  library, and hash URLs need no server routes on the Worker.
+- **Components:** Tailwind v4 plus shadcn-svelte, copied into `src/web/lib/components/ui/` (dialog,
+  popover, range calendar, dropdown menu, tabs, toast). They bring focus handling and keyboard
+  navigation; the month grid and everything else is plain Tailwind. The CLI's `init` hangs here, so
+  `components.json`, `lib/utils.ts` and the CSS were set up by hand; `bunx shadcn-svelte@latest add
+  <name>` works.
+- **Dark mode:** instead of `dark:` variants on every class, the dark theme redefines the palette
+  (`src/web/app.css`): grays become a dark-gray scale and each colour family is mirrored (50 ↔ 950)
+  with less chroma, so `bg-sky-100` stays a soft colour in both themes. The shadcn tokens are built
+  on that palette and flip with it. The theme follows the system unless picked (`mode-watcher`).
+- **Session:** the dev token stays in `localStorage` (signed in until "sair"); the team password in
+  `sessionStorage` (admin access ends with the tab).
+- **Phones:** below `md` the month grid becomes a list of days and the nav a bottom tab bar; the
+  day editor is a bottom sheet.
+
+**Don't "fix" by:** adding `dark:` classes next to palette classes (they would undo the mirrored
+palette), or adding a colour family without its dark scale in `app.css`.

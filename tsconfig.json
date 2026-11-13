@@ -1,4 +1,8 @@
 {
   "files": [],
+  // shadcn-svelte reads the `$lib` alias from here; type checks use each project's own config.
+  "compilerOptions": {
+    "paths": { "$lib": ["./src/web/lib"], "$lib/*": ["./src/web/lib/*"] }
+  },
   "references": [{ "path": "./tsconfig.web.json" }, { "path": "./tsconfig.worker.json" }]
 }

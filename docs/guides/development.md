@@ -17,10 +17,16 @@ bun run dev                 # http://localhost:5173 — /api/* goes to the Worke
 
 `bun run dev` runs the Worker inside workerd with a local D1 stored in `.wrangler/`.
 
+### First run
+
+Open http://localhost:5173, go to **Admin** (link on the sign-in screen), unlock with the
+`TEAM_PASSWORD` from `.dev.vars`, add a few devs and copy one token. Sign in with it: the month
+screen offers to open the current month with a suggested roster. To start from the real sheet,
+import its CSV on the admin screen instead (decisions #16).
+
 ### Using the API by hand
 
-Until there are screens, the API is driven with curl. Admin calls take the team password, the
-rest a dev token:
+The API can also be driven with curl. Admin calls take the team password, the rest a dev token:
 
 ```bash
 API=http://localhost:5173/api

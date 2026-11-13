@@ -29,6 +29,27 @@ describe('devs', () => {
     expect(await wrongPassword.json()).toEqual({ error: 'invalid_team_password' })
   })
 
+  it('lists devs and sets weights with the team password, before anyone has a token', async () => {
+    const devs = await addDevs(database.env, [{ nickname: 'owl' }])
+    const client = clientFor(database.env)
+    const param = { id: String(devs.get('owl')?.id) }
+    expect((await client.api.devs[':id'].weight.$put({ param, json: { weight: 50 } }, asTeam)).status).toBe(
+      200,
+    )
+    const listed = await (await client.api.devs.$get({}, asTeam)).json()
+    expect(listed.map((dev) => dev.weight)).toEqual([50])
+    const wrongPassword = { headers: { 'X-Team-Password': 'nope' } }
+    expect((await client.api.devs.$get({}, wrongPassword)).status).toBe(401)
+  })
+
+  it('checks the team password', async () => {
+    const client = clientFor(database.env)
+    expect((await client.api.team.check.$get({}, asTeam)).status).toBe(200)
+    expect((await client.api.team.check.$get({}, { headers: { 'X-Team-Password': 'nope' } })).status).toBe(
+      401,
+    )
+  })
+
   it('refuses requests without a valid token', async () => {
     const client = clientFor(database.env)
     expect((await client.api.devs.$get()).status).toBe(401)

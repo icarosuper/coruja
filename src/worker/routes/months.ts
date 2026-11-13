@@ -12,6 +12,7 @@ import {
   monthLog,
   monthView,
   openMonth,
+  unconfirmMonth,
 } from '../store/months'
 import { importMonth, sheetDifferences } from '../store/sheet'
 import { csvSchema, dateSchema, dayContentSchema, monthIdSchema, validate } from '../validation'
@@ -100,6 +101,10 @@ export const monthRoutes = new Hono<AppEnv>()
   )
   .post('/:month/confirm', requireDev, validate('param', monthParam), async (context) => {
     await confirmMonth(createDatabase(context.env.DB), context.req.valid('param').month, context.var.dev.id)
+    return context.json({ ok: true })
+  })
+  .delete('/:month/confirm', requireDev, validate('param', monthParam), async (context) => {
+    await unconfirmMonth(createDatabase(context.env.DB), context.req.valid('param').month, context.var.dev.id)
     return context.json({ ok: true })
   })
   .post(

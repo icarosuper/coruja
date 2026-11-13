@@ -103,6 +103,17 @@ describe('opening a month', () => {
     expect(month.participants.map((participant) => participant.nickname)).not.toContain('wren')
   })
 
+  it("lists each active dev's preferences for the month's dates", async () => {
+    const client = clientFor(database.env)
+    const fifth = { kind: 'month_day', value: 5, preference: 'good' } as const
+    await client.api.me.rules.$put({ json: { rules: [fifth] } }, as('kite'))
+    await client.api.me.absences.$post({ json: { fromDate: '2026-12-30', toDate: '2027-01-02' } }, as('kite'))
+    const month = await openMonth(DECEMBER)
+    const kite = month.preferences.find((entry) => entry.devId === devOf('kite').id)
+    expect(kite?.byDate).toEqual({ '2026-12-05': 'good', '2026-12-30': 'cant', '2026-12-31': 'cant' })
+    expect(month.preferences.find((entry) => entry.devId === devOf('owl').id)?.byDate).toEqual({})
+  })
+
   it('refuses a month that exists or comes before an existing one', async () => {
     await openMonth(DECEMBER)
     const client = clientFor(database.env)
@@ -192,6 +203,22 @@ describe('editing, confirming and closing', () => {
     expect(month.outsiders).toEqual([
       { devId: lark?.id, nickname: 'lark', hours: 15, balanceBefore: 0, balanceAfter: 15 },
     ])
+  })
+
+  it('takes back a confirmation and logs it', async () => {
+    await openMonth(DECEMBER)
+    await confirm(DECEMBER, 'kite')
+    const client = clientFor(database.env)
+    const response = await client.api.months[':month'].confirm.$delete(
+      { param: { month: DECEMBER } },
+      as('kite'),
+    )
+    expect(response.status).toBe(200)
+    expect((await viewMonth(DECEMBER)).pendingDevIds).toContain(devOf('kite').id)
+    const log = await (
+      await client.api.months[':month'].log.$get({ param: { month: DECEMBER } }, as('owl'))
+    ).json()
+    expect(log.slice(0, 2).map((entry) => entry.action)).toEqual(['unconfirm', 'confirm'])
   })
 
   it('exports with pending confirmations; after it, edits record swaps without unconfirming', async () => {

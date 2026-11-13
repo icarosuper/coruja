@@ -2,6 +2,7 @@ import { and, asc, desc, eq, gt, gte, inArray, isNotNull, lte } from 'drizzle-or
 import type { BatchItem } from 'drizzle-orm/batch'
 import { monthHoursByDev } from '../../schedule/balance'
 import { addDays, daysOfMonth, type IsoDate, type MonthId, monthOf, nextMonth } from '../../schedule/dates'
+import { type Preference, preferenceOn } from '../../schedule/preferences'
 import { suggestRoster } from '../../schedule/scheduler'
 import { type DayKind, defaultCalendar, findSegmentProblem, type Segment } from '../../schedule/shifts'
 import { bankingCells, officeScript, pasteGrid } from '../../sheet/export'
@@ -143,7 +144,7 @@ export async function monthView(database: Database, monthId: MonthId) {
   const dates = daysOfMonth(monthId)
   const previousDate = addDays(dates[0] ?? '', -1)
 
-  const [shiftDays, participantRows, confirmationRows, devRows, balancesAt, changesAfterExport] =
+  const [shiftDays, participantRows, confirmationRows, devRows, balancesAt, changesAfterExport, preferences] =
     await Promise.all([
       loadShiftDays(database, { fromDate: previousDate, toDate: dates.at(-1) ?? '' }),
       database.select().from(monthParticipants).where(eq(monthParticipants.monthId, monthId)),
@@ -151,6 +152,7 @@ export async function monthView(database: Database, monthId: MonthId) {
       database.select({ id: devs.id, nickname: devs.nickname }).from(devs),
       loadBalances(database),
       countChangesAfter(database, monthId, month.exportedAt),
+      preferencesOfActiveDevs(database, dates),
     ])
   const nicknameOf = (devId: number) => devRows.find((dev) => dev.id === devId)?.nickname ?? '?'
   const withNicknames = (segments: Segment<number>[]) =>
@@ -215,7 +217,35 @@ export async function monthView(database: Database, monthId: MonthId) {
     unassignedDates,
     pendingDevIds,
     isReady,
+    preferences,
   }
+}
+
+/**
+ * What each active dev said about each date (rules and absences, as of now), so whoever edits a day
+ * sees who prefers it, avoids it or cannot take it. Only dates with a preference are listed.
+ */
+async function preferencesOfActiveDevs(database: Database, dates: IsoDate[]) {
+  const firstDate = dates[0] ?? ''
+  const lastDate = dates.at(-1) ?? ''
+  const [activeDevs, ruleRows, absenceRows] = await Promise.all([
+    database.select({ id: devs.id }).from(devs).where(eq(devs.active, true)),
+    database.select().from(preferenceRules),
+    database
+      .select()
+      .from(absences)
+      .where(and(lte(absences.fromDate, lastDate), gte(absences.toDate, firstDate))),
+  ])
+  return activeDevs.map((dev) => {
+    const rules = ruleRows.filter((rule) => rule.devId === dev.id)
+    const devAbsences = absenceRows.filter((absence) => absence.devId === dev.id)
+    const byDate: Record<IsoDate, Preference> = {}
+    for (const date of dates) {
+      const preference = preferenceOn(date, rules, devAbsences)
+      if (preference) byDate[date] = preference
+    }
+    return { devId: dev.id, byDate }
+  })
 }
 
 /**
@@ -346,6 +376,21 @@ export async function confirmMonth(database: Database, monthId: MonthId, devId: 
   const isNewConfirmation = inserted.length > 0
   if (isNewConfirmation) {
     await database.insert(changeLog).values({ monthId, actorDevId: devId, action: 'confirm' })
+  }
+}
+
+/** Takes back the calling dev's confirmation, while the month is not exported yet. */
+export async function unconfirmMonth(database: Database, monthId: MonthId, devId: number): Promise<void> {
+  const month = await findMonth(database, monthId)
+  const isExported = month.exportedAt !== null
+  if (isExported) throw new ApiError(409, 'month_exported')
+  const deleted = await database
+    .delete(confirmations)
+    .where(and(eq(confirmations.monthId, monthId), eq(confirmations.devId, devId)))
+    .returning({ devId: confirmations.devId })
+  const wasConfirmed = deleted.length > 0
+  if (wasConfirmed) {
+    await database.insert(changeLog).values({ monthId, actorDevId: devId, action: 'unconfirm' })
   }
 }
 

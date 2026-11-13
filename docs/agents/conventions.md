@@ -14,7 +14,10 @@ src/
     store/       reads and writes in D1 per area (devs, profile, months, sheet, balances)
     testing/     test-only helpers: useTestDatabase (Miniflare D1), typed test client
     db/          Drizzle: schema.ts (tables), client.ts (createDatabase)
-  web/           Svelte 5 SPA. Entry: main.ts → App.svelte; api.ts is the typed API client
+  web/           Svelte 5 SPA. Entry: main.ts → App.svelte (header, nav, routes). api.ts: typed client
+                 + `call()` (throws `ApiFailure` with the Portuguese message from errors.ts);
+                 router.svelte.ts, session.svelte.ts, calendar.ts (today in São Paulo), format.ts,
+                 xlsx.ts. Screens: month/, profile/, admin/, TokenEntry. lib/: shadcn-svelte.
   schedule/      Domain rules as pure functions — no D1, no Hono, no Date.now() inside.
                  dates.ts (YYYY-MM-DD helpers, UTC), holidays.ts, shifts.ts (day kinds, hours by
                  calendar month, segment validation), preferences.ts (profile rules → preference
@@ -89,4 +92,14 @@ There is no `src/shared/` for API payloads on purpose: the web app gets them fro
 - Svelte 5 with runes, `<script lang="ts">`. Biome formats and lints `.svelte` files
   (`html.experimentalFullSupportEnabled`).
 - UI strings in Portuguese; everything else in English.
-- Router and component library: not chosen yet, decided together with the screens.
+- Routes are hashes (`router.svelte.ts`, decisions #27); links come from `links`.
+- Every API call goes through `call(api.api....)`: it returns the body or throws `ApiFailure`, whose
+  `message` is ready to show (a toast with `svelte-sonner`). A new error code gets its Portuguese
+  text in `errors.ts`.
+- Response types come from the API with `InferResponseType` (`month/types.ts`), never by hand.
+- The web app may import pure functions from `src/schedule/` (dates, shift hours); never from
+  `src/worker/` beyond `import type`.
+- Colours: palette classes (`bg-stone-100`, `text-sky-700`…) without `dark:` variants; the dark
+  theme redefines the palette (decisions #27). A dev's colour comes from `colorOf(devId)`.
+- shadcn components live in `src/web/lib/components/ui/` and are ours to edit; add more with
+  `bunx shadcn-svelte@latest add <name>`.

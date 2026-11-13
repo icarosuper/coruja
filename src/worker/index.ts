@@ -1,5 +1,6 @@
 import { Hono } from 'hono'
 import type { AppEnv } from './app-env'
+import { requireTeamPassword } from './auth'
 import { ApiError } from './errors'
 import { devRoutes } from './routes/devs'
 import { meRoutes } from './routes/me'
@@ -9,6 +10,8 @@ import { monthRoutes } from './routes/months'
 const app = new Hono<AppEnv>()
   .basePath('/api')
   .get('/health', (context) => context.json({ status: 'ok' }))
+  /** Lets the admin screen check the team password before showing anything. */
+  .get('/team/check', requireTeamPassword, (context) => context.json({ ok: true }))
   .route('/devs', devRoutes)
   .route('/me', meRoutes)
   .route('/months', monthRoutes)

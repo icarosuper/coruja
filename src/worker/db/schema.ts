@@ -24,6 +24,7 @@ export const CHANGE_LOG_ACTIONS = [
   'day_kind',
   'sync',
   'confirm',
+  'unconfirm',
   'export',
   'import',
 ] as const

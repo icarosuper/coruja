@@ -64,3 +64,13 @@ export const requireTeamPassword = createMiddleware<AppEnv>(async (context, next
   if (!isTeamPassword) throw new ApiError(401, 'invalid_team_password')
   await next()
 })
+
+/**
+ * Either a dev token or the team password: for what the admin screen needs to read or set before any
+ * dev has a token (the dev list, weights).
+ */
+export const requireDevOrTeamPassword = createMiddleware<AppEnv>(async (context, next) => {
+  const hasTeamPassword = context.req.header(TEAM_PASSWORD_HEADER) !== undefined
+  const middleware = hasTeamPassword ? requireTeamPassword : requireDev
+  return middleware(context, next)
+})

@@ -40,5 +40,10 @@
       "enabled": true,
       "indentScriptAndStyle": true
     }
+  },
+  "css": {
+    "parser": {
+      "tailwindDirectives": true
+    }
   }
 }

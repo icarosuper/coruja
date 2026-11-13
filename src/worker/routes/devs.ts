@@ -1,7 +1,7 @@
 import { Hono } from 'hono'
 import { z } from 'zod'
 import type { AppEnv } from '../app-env'
-import { requireDev, requireTeamPassword } from '../auth'
+import { requireDevOrTeamPassword, requireTeamPassword } from '../auth'
 import { createDatabase } from '../db/client'
 import { createDev, issueToken, listDevs, setWeight, updateDev } from '../store/devs'
 import { addAbsence, loadProfile, removeAbsence, replaceRules } from '../store/profile'
@@ -19,7 +19,7 @@ const idParam = z.object({ id: idSchema })
 // Adding devs, renaming, (de)activating, tokens and editing someone else's profile need the team
 // password (decisions #3); the weight is anyone's to change (#18).
 export const devRoutes = new Hono<AppEnv>()
-  .get('/', requireDev, async (context) => {
+  .get('/', requireDevOrTeamPassword, async (context) => {
     return context.json(await listDevs(createDatabase(context.env.DB)))
   })
   .post(
@@ -51,7 +51,7 @@ export const devRoutes = new Hono<AppEnv>()
   })
   .put(
     '/:id/weight',
-    requireDev,
+    requireDevOrTeamPassword,
     validate('param', idParam),
     validate('json', z.object({ weight: weightSchema })),
     async (context) => {

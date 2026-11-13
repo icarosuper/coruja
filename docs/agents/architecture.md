@@ -4,9 +4,10 @@ How Coruja is put together and what must stay true. Not a symbol list — for "w
 [features-index.md](features-index.md).
 
 **Status:** the **database schema**, the pure **shift rules** (holidays, day kinds, hours by
-calendar month, segment validation), the **scheduler**, the **sheet reader** (Banking roster out of
-the sheet exported as CSV) and the **API** (auth, devs, profile, months: open, edit, confirm, export,
-import, sheet diff and sync) and the **export** to the sheet (Office Script, paste grid) exist. No screens yet: the Svelte root is a placeholder.
+calendar month, segment validation), the **scheduler**, the **sheet reader and writer** (Banking
+roster out of the CSV export; Office Script and paste grid back into the sheet), the **API** (auth,
+devs, profiles, months: open, edit, confirm, export, import, sheet diff and sync) and the
+**screens** (token entry, month, profile, admin) exist. The cron that opens months does not yet.
 
 ## Deploy shape
 
@@ -169,6 +170,26 @@ call `store/` (reads and writes in D1, the domain rules in `src/schedule/` and `
 - **Sheet**: the web app decodes the CSV (Windows-1252) and sends it as text in JSON. Import and
   diff refuse unreadable files, sheet problems and nicknames that are not devs (matched ignoring
   case). The diff's `after` is exactly what `POST /months/:month/changes` takes.
+
+## Web app
+
+A Svelte 5 SPA in `src/web/`, served by the same Worker as static assets
+([decisions.md #27](decisions.md#27-screens-hash-router-shadcn-svelte-dark-mode-by-redefining-the-palette)).
+Hash routes: `#/entrar`, `#/mes/YYYY-MM` (`#/mes` = the default month: the current one, the next
+from the 20th on), `#/perfil`, `#/admin`, `#/admin/dev/:id`. Each screen loads what it shows and
+reloads after every action; there is no client cache.
+
+- **Sign-in:** the dev pastes their token once; it is checked with `GET /me` and kept in
+  `localStorage`. A token the API refuses signs out. Admin screens ask for the team password, check
+  it with `GET /team/check` and keep it for the tab; they work without a dev token (the first devs
+  are created there).
+- **Month:** arrows from the first month in Coruja to the one after the newest. A month not opened
+  yet shows when it opens; once its 20th has passed (the cron does not exist yet), a button opens it.
+  "Hoje" shows today's on-call, from today's month in São Paulo time.
+- **Export:** the Office Script goes to the clipboard (with a button if the browser refuses); the
+  paste grid becomes an `.xlsx` built in the browser (`xlsx.ts`, `fflate`).
+- **Sheet:** the admin screen decodes the CSV from Windows-1252, then imports it or shows the diff
+  and applies it.
 
 ## Tables
 

@@ -13,7 +13,8 @@ sheet. It replaces the monthly meeting where the sheet was filled by hand.
 
 Infra and Sustentação are out of scope: they keep using the sheet directly.
 
-**Status:** database schema, shift rules, scheduler, sheet CSV reader and the API. No screens yet — see [docs/TODO.md](docs/TODO.md).
+**Status:** database schema, shift rules, scheduler, sheet CSV reader and writer (Office Script,
+paste grid), the API and the screens (month, profile, admin). Next: the cron — see [docs/TODO.md](docs/TODO.md).
 Screens and visual design are decided with the user **before** they are coded.
 
 ## Commands
@@ -38,7 +39,8 @@ Setup and deploy: [docs/guides/development.md](docs/guides/development.md).
 ## Stack
 
 Cloudflare Workers (static assets + API in one deploy) · D1 (SQLite) · Drizzle · Hono · Svelte 5
-SPA + Vite (`@cloudflare/vite-plugin`) · TypeScript 6 · bun · Biome · Vitest.
+SPA + Vite (`@cloudflare/vite-plugin`) · Tailwind v4 + shadcn-svelte · TypeScript 6 · bun · Biome ·
+Vitest.
 
 ## Always-on rules
 
