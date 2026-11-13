@@ -19,20 +19,26 @@
   const dayOn = (date: string) => view.days.find((day) => day.date === date) as MonthDay
 
   const isMine = (day: MonthDay) => day.segments.some((segment) => segment.devId === meId)
+  const isToday = (day: MonthDay) => day.date === todayDate
+  // Today's frame is 4px; a 7px ring under it shows 3px of green inside the blue.
+  const MY_DAY_RING_INSIDE_TODAY_FRAME = 'relative z-10 ring-[7px] ring-emerald-500 ring-inset'
+
   /** Background and "highlight my days" look of a day, same in the grid and in the phone list. */
   const dayLook = (day: MonthDay) => {
     const background = day.holidayName ? 'bg-indigo-50' : day.kind === 'day_off' ? 'bg-stone-100' : 'bg-white'
     const highlight = !onlyMine
       ? ''
       : isMine(day)
-        ? 'relative z-10 ring-2 ring-emerald-500 ring-inset'
+        ? isToday(day)
+          ? MY_DAY_RING_INSIDE_TODAY_FRAME
+          : 'relative z-10 ring-2 ring-emerald-500 ring-inset'
         : 'opacity-25 grayscale'
     return `${background} ${highlight}`
   }
 </script>
 
 {#snippet dayNumber(day: MonthDay, size: string)}
-  {#if day.date === todayDate}
+  {#if isToday(day)}
     <span
       class="inline-grid min-w-7 place-items-center rounded-full bg-sky-600 px-1 font-semibold text-white {size}"
       title="Hoje"
@@ -43,6 +49,18 @@
       >{Number(day.date.slice(8))}</span
     >
   {/if}
+{/snippet}
+
+{#snippet todayFrame(day: MonthDay)}
+  {#if isToday(day)}
+    <span class="pointer-events-none absolute inset-0 z-20 border-4 border-sky-600" aria-hidden="true"></span>
+  {/if}
+{/snippet}
+
+{#snippet todayLabel()}
+  <span class="rounded bg-sky-600 px-1.5 py-0.5 text-[11px] leading-none font-bold tracking-wide text-white"
+    >HOJE</span
+  >
 {/snippet}
 
 {#snippet hoursBadge(kind: DayKind)}
@@ -85,12 +103,16 @@
     <button
       type="button"
       onclick={() => onEdit(day)}
-      class="flex min-h-[max(6rem,calc((100dvh-22rem)/5))] flex-col gap-1.5 p-2 text-left transition hover:bg-sky-50 {dayLook(
+      class="relative flex min-h-[max(6rem,calc((100dvh-22rem)/5))] flex-col gap-1.5 p-2 text-left transition hover:bg-sky-50 {dayLook(
         day,
       )}"
     >
+      {@render todayFrame(day)}
       <div class="flex items-center gap-2">
         {@render dayNumber(day, 'text-base')}
+        {#if isToday(day)}
+          {@render todayLabel()}
+        {/if}
         <span class="flex-1"></span>
         {@render hoursBadge(day.kind)}
       </div>
@@ -114,13 +136,17 @@
       <button
         type="button"
         onclick={() => onEdit(day)}
-        class="flex w-full items-start gap-3 px-3 py-2.5 text-left active:bg-sky-50 {dayLook(day)}"
+        class="relative flex w-full items-start gap-3 px-3 py-2.5 text-left active:bg-sky-50 {dayLook(day)}"
       >
-        <span class="w-9 shrink-0 text-center leading-tight">
+        {@render todayFrame(day)}
+        <span class="w-11 shrink-0 text-center leading-tight">
           <span class="block text-[11px] font-medium text-stone-500 uppercase"
             >{WEEKDAYS[weekdayOf(date)]}</span
           >
           <span class="block">{@render dayNumber(day, 'text-xl')}</span>
+          {#if isToday(day)}
+            <span class="mt-1 block">{@render todayLabel()}</span>
+          {/if}
         </span>
         <span class="flex min-w-0 flex-1 flex-col gap-1.5 pt-0.5">
           {#if day.holidayName}
