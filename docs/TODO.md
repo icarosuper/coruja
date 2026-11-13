@@ -6,7 +6,7 @@
 **Closed so far:** *(2026-11-12)* planning and repo skeleton (Worker + D1 + Svelte shell, docs);
 holidays, month boundary, UI language, starting balance, Drizzle, Svelte and the typed client
 decided (decisions #11–#16); release model (#17); participation weight, joining/leaving devs,
-editable closed months, change log, unassigned days (#18–#22); swap sync via CSV diff + MCP (#23). Database schema and first migration (10 tables). Holidays and hour counting (`src/schedule/`). Sheet CSV reader (`src/sheet/`), checked against the November export. Scheduler (`suggestRoster`, #24). API: auth, devs, profile, months (open, edit, confirm, close), November import, sheet diff and sync (#25). Closing replaced by recorded exports; Office Script and paste-grid generator (`src/sheet/export.ts`); admin edits of someone else's profile (#26). Screens: token entry, month (arrows, calendar, day editor, confirm, export), profile, admin (#27). Generate an open month again (#28). Months opened and closed by hand; the daily cron was dropped (#7, #31).
+editable closed months, change log, unassigned days (#18–#22); swap sync via CSV diff + MCP (#23). Database schema and first migration (10 tables). Holidays and hour counting (`src/schedule/`). Sheet CSV reader (`src/sheet/`), checked against the November export. Scheduler (`suggestRoster`, #24). API: auth, devs, profile, months (open, edit, confirm, close), November import, sheet diff and sync (#25). Closing replaced by recorded exports; Office Script and paste-grid generator (`src/sheet/export.ts`); admin edits of someone else's profile (#26). Screens: token entry, month (arrows, calendar, day editor, confirm, export), profile, admin (#27). Generate an open month again (#28). Months opened and closed by hand; the daily cron was dropped (#7, #31). *(2026-11-13)* Domain `coruja.verme.net`; repo reviewed before going public (no secrets or real data; the first commit's nicknames stay in history; the internal process stays described). Repo public; `master` protected (PR with green `verify` and `pr-title`, owner bypasses).
 
 ## Open questions (ask the user)
 
@@ -14,20 +14,6 @@ editable closed months, change log, unassigned days (#18–#22); swap sync via C
   exist and work in the team channel without admin approval? If not, notifications are dropped.
 - **Office Scripts:** is the manager's sheet on OneDrive/SharePoint, and is the Automate tab
   available? (Required by decisions #4.)
-- **Domain:** which subdomain of the personal domain.
-
-## Before going public (after the MVP)
-
-- **Review what the repo says about the team and the company.** Docs describe the internal process
-  (sheet layout, teams, the manager's targets). The first commit (`9fe8a69`) still has two
-  colleagues' nicknames in `docs/agents/decisions.md` #1: rewrite history or accept it.
-- **No real data in the repo:** the CSV import reads a file passed by path; the real export stays
-  out (`*.csv`/`*.xlsx` are gitignored). Seed data uses made-up nicknames.
-- **Secrets:** team password, Teams webhook URL and similar live in Worker secrets, never in
-  `wrangler.jsonc`.
-- **Branch protection on `master`** (free once public): require PR + green CI for everyone but the
-  owner.
-- **PR previews** (below).
 
 ## Build order
 
@@ -44,7 +30,14 @@ After the MVP is live:
    in (own shifts, one event per shift, open months).
 3. **MCP server** for Claude Code.
 4. **Teams notifications** (if the Workflows question resolves).
-5. **PR previews with a staging database** — a `preview` environment in `wrangler.jsonc` (separate
+5. **Rate limiting rule on Cloudflare** (dashboard: `verme.net` → Security → WAF → Rate limiting
+   rules; the Free plan allows one, path only, per IP, 10s window): `/api/` on `coruja.verme.net`,
+   50 requests per 10s, block for 10s. Slows a brute force on the team password; generous enough for
+   the whole team behind one office IP.
+6. **Limit team password attempts in the Worker.** Count failed
+   `X-Team-Password` checks per IP (e.g. a Workers Rate Limiting binding or a D1 counter) and
+   answer 429 after a few.
+7. **PR previews with a staging database** — a `preview` environment in `wrangler.jsonc` (separate
    Worker `coruja-preview` + its own D1 `coruja-staging` with seed data); Workers Builds runs
    `wrangler versions upload` for non-`master` branches, building with `CLOUDFLARE_ENV=preview`
    so the Vite plugin picks that environment. One staging DB shared by all PRs.
