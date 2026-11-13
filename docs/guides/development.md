@@ -76,11 +76,12 @@ run it again. Name a file with the real team `something.local.json`: those are g
 
 ```bash
 bunx wrangler login
-bunx wrangler d1 create coruja        # copy the database_id into wrangler.jsonc
+bunx wrangler d1 create coruja        # copy the database_id into wrangler.jsonc (done for production)
 bun run cf-typegen
 bun run db:migrate:remote
 bunx wrangler secret put TEAM_PASSWORD   # the team password (decisions #3)
 bun run deploy
 ```
 
-Then attach the custom domain in the Cloudflare dashboard (Workers → coruja → Settings → Domains).
+The custom domain is the `routes` entry in `wrangler.jsonc` (its zone must be on the same
+Cloudflare account); the deploy creates its DNS record and certificate.

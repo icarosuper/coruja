@@ -8,12 +8,14 @@
     "not_found_handling": "single-page-application",
     "run_worker_first": ["/api/*"]
   },
+  // Needs the verme.net zone on this Cloudflare account; deploy creates the DNS record and certificate.
+  "routes": [{ "pattern": "coruja.verme.net", "custom_domain": true }],
   "d1_databases": [
     {
       "binding": "DB",
       "database_name": "coruja",
-      // Local dev works with any value. Replace with the real id from `wrangler d1 create coruja` before deploying.
-      "database_id": "00000000-0000-0000-0000-000000000000",
+      // Production database (local dev uses its own copy under .wrangler/, whatever the id).
+      "database_id": "ff12930d-caca-4251-88e9-dbe021551d0f",
       "migrations_dir": "migrations"
     }
   ],
