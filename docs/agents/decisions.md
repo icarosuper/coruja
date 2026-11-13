@@ -389,7 +389,7 @@ after the export.
 
 ### 27. Screens: hash router, shadcn-svelte, dark mode by redefining the palette
 
-The screens were approved on a throwaway prototype (branch `prototype/screens`) before being built.
+The screens were approved on a throwaway prototype (branch `prototype/screens`, deleted; its last commit was `444ac55`) before being built.
 
 - **Router:** a hash router of a few lines (`src/web/router.svelte.ts`). Five routes do not need a
   library, and hash URLs need no server routes on the Worker.
