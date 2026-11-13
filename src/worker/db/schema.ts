@@ -97,8 +97,8 @@ export const absences = sqliteTable(
 )
 
 /**
- * One row per month; `id` is `YYYY-MM`. A month is open from the 20th of the month before; there is
- * no closing (#7): exporting to the sheet is recorded instead. "Ready" is derived, not stored (#22).
+ * One row per month; `id` is `YYYY-MM`. A dev opens it by hand (#7) and can undo that until it starts
+ * or is exported (#31); exporting to the sheet is recorded (#26). "Ready" is derived, not stored (#22).
  */
 export const months = sqliteTable('months', {
   id: text('id').primaryKey(),
@@ -215,7 +215,7 @@ export const balanceAdjustments = sqliteTable(
   ],
 )
 
-/** Every change to a month's roster (#21). `before`/`after` are JSON. Null actor = the cron. */
+/** Every change to a month's roster (#21). `before`/`after` are JSON. Null actor = Coruja itself. */
 export const changeLog = sqliteTable(
   'change_log',
   {

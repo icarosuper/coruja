@@ -67,9 +67,8 @@ export async function ensureMonthCanBeAdded(database: Database, monthId: MonthId
 /**
  * Opens a month with a suggested roster (decisions #7): every active dev with a weight above 0
  * takes part, with the weight frozen now; holidays come from the São Paulo calendar (#14).
- * `actorDevId` is null when the cron opens it.
  */
-export async function openMonth(database: Database, monthId: MonthId, actorDevId: number | null) {
+export async function openMonth(database: Database, monthId: MonthId, actorDevId: number) {
   await ensureMonthCanBeAdded(database, monthId)
   const calendar = defaultCalendar(monthId)
   const { participants, suggestion } = await suggestMonth(database, monthId, calendar)
@@ -150,6 +149,32 @@ export async function regenerateMonth(database: Database, monthId: MonthId, acto
       after: { unassignedDates: suggestion.unassignedDates },
       createdAt: now,
     }),
+  ])
+}
+
+/**
+ * Undoes the opening of a month (decisions #31): its days, roster, participants, confirmations and log
+ * go, and it is "not opened" again, exported or not. Only the newest month and before it starts
+ * (São Paulo date `today`): an earlier month's hours feed the later one, and a started one is the
+ * roster people are on call by.
+ */
+export async function closeMonth(database: Database, monthId: MonthId, today: IsoDate) {
+  await findMonth(database, monthId)
+  const hasStarted = monthId <= monthOf(today)
+  if (hasStarted) throw new ApiError(409, 'month_started')
+  const later = await database.select({ id: months.id }).from(months).where(gt(months.id, monthId))
+  const hasLaterMonth = later.length > 0
+  if (hasLaterMonth) throw new ApiError(409, 'later_month_exists')
+
+  const monthDates = daysOfMonth(monthId)
+  await runBatch(database, [
+    database.delete(shiftSegments).where(inArray(shiftSegments.date, monthDates)),
+    // Confirmations reference participants; everything references the month: the month goes last.
+    database.delete(confirmations).where(eq(confirmations.monthId, monthId)),
+    database.delete(monthParticipants).where(eq(monthParticipants.monthId, monthId)),
+    database.delete(days).where(eq(days.monthId, monthId)),
+    database.delete(changeLog).where(eq(changeLog.monthId, monthId)),
+    database.delete(months).where(eq(months.id, monthId)),
   ])
 }
 

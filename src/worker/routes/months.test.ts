@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import type { IsoDate } from '../../schedule/dates'
+import { saoPauloDate } from '../../schedule/calendar'
+import { type IsoDate, monthOf } from '../../schedule/dates'
 import { bankingByShift, buildSheet } from '../../sheet/testing/build-sheet'
 import { addDevs, asDev, asTeam, clientFor } from '../testing/client'
 import { useTestDatabase } from '../testing/env'
@@ -309,6 +310,51 @@ describe('generating the roster again', () => {
     await openMonth(DECEMBER)
     await openMonth(JANUARY)
     const response = await regenerate(DECEMBER)
+    expect(response.status).toBe(409)
+    expect(await response.json()).toMatchObject({ error: 'later_month_exists' })
+  })
+})
+
+describe('closing a month (undoing the opening)', () => {
+  // Far enough ahead that the months have not started whenever the tests run.
+  const FUTURE = '2099-01'
+  const AFTER_FUTURE = '2099-02'
+  const close = (month: string) =>
+    clientFor(database.env).api.months[':month'].$delete({ param: { month } }, as('hawk'))
+
+  it('removes the month, its roster and confirmations, and lets it open again', async () => {
+    await openMonth(FUTURE)
+    await confirm(FUTURE, 'owl')
+    const response = await close(FUTURE)
+    expect(response.status).toBe(200)
+    const afterClosing = await clientFor(database.env).api.months[':month'].$get(
+      { param: { month: FUTURE } },
+      as('owl'),
+    )
+    expect(afterClosing.status).toBe(404)
+
+    const reopened = await openMonth(FUTURE)
+    expect(reopened.participants.every((participant) => !participant.confirmed)).toBe(true)
+  })
+
+  it('is refused once the month has started', async () => {
+    const thisMonth = monthOf(saoPauloDate(new Date()))
+    await openMonth(thisMonth)
+    const response = await close(thisMonth)
+    expect(response.status).toBe(409)
+    expect(await response.json()).toMatchObject({ error: 'month_started' })
+  })
+
+  it('works on an exported month too', async () => {
+    await openMonth(FUTURE)
+    expect((await exportAs('owl', FUTURE, 'paste_grid')).status).toBe(200)
+    expect((await close(FUTURE)).status).toBe(200)
+  })
+
+  it('is refused while a later month exists', async () => {
+    await openMonth(FUTURE)
+    await openMonth(AFTER_FUTURE)
+    const response = await close(FUTURE)
     expect(response.status).toBe(409)
     expect(await response.json()).toMatchObject({ error: 'later_month_exists' })
   })

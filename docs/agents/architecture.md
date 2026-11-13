@@ -7,7 +7,8 @@ How Coruja is put together and what must stay true. Not a symbol list — for "w
 calendar month, segment validation), the **scheduler**, the **sheet reader and writer** (Banking
 roster out of the CSV export; Office Script and paste grid back into the sheet), the **API** (auth,
 devs, profiles, months: open, edit, confirm, export, import, sheet diff and sync) and the
-**screens** (token entry, month, profile, admin) and the **cron** that opens months exist.
+**screens** (token entry, month, profile, admin) exist. Months are opened (and the opening undone)
+by hand; there is no cron.
 
 ## Deploy shape
 
@@ -20,8 +21,6 @@ One Cloudflare Worker serves everything:
   the edge (`placement.region`, decisions #29).
 - The web app imports only the **type** `AppType` from the Worker and builds a typed client from it
   (`src/web/api.ts`). No runtime code crosses from `src/worker/` to `src/web/`.
-- A Cron Trigger runs the same Worker daily at 03:00 UTC (midnight in São Paulo) and opens the next
-  month on the 20th (`src/worker/cron.ts`).
 - Planned: a remote MCP endpoint in the same Worker.
 
 ## Domain
@@ -70,7 +69,8 @@ next suggestion ([decisions.md #5](decisions.md#5-preferences-are-profile-rules-
 ### Month lifecycle
 
 ```
-open (20th of previous month, cron) ──► suggestion generated from profiles + hour balance
+open (any dev, any time) ──► suggestion generated from profiles + hour balance
+      │  └─ dev closes it (newest, not started; exported or not) ──► not opened again, all erased
       │
       ▼
 reviewing ── dev confirms ──────────────► confirmed (per dev)
@@ -84,7 +84,7 @@ exported (when, by whom) ── edits record swaps, no confirmations; each one c
                             "change after the export" until someone exports again
 ```
 
-There is no deadline and no closing
+There is no deadline and no "closed" state
 ([decisions.md #26](decisions.md#26-months-are-never-closed-exports-are-recorded)). A month with an
 unassigned day never becomes ready and cannot be exported. Every change to a shift, in any state, goes to the change log
 ([decisions.md #21](decisions.md#21-every-roster-change-is-logged)).
@@ -164,10 +164,11 @@ call `store/` (reads and writes in D1, the domain rules in `src/schedule/` and `
   D1's 100-parameter limit (`insertRows`).
 - **Opening a month** runs the scheduler inside the request (a few ms of CPU for one team).
   Participants = active devs with weight above 0, weights frozen. A month can only be added after
-  the latest one. The **cron** runs daily and opens every month after the newest up to the default
-  one (`monthsDueToOpen`): the next month from the 20th on, São Paulo date, so a failed run is made
-  up the next day. It opens nothing while there is no month yet: the first month comes from the
-  import or is opened by hand. Any dev can also open a month by hand.
+  the latest one. Only a dev opens a month, whenever the team wants (decisions #7); nothing opens
+  one by itself.
+- **Closing a month** (`closeMonth`, decisions #31) undoes the opening: segments, confirmations,
+  participants, days, the month's log and the month row go in one batch. Only the newest month and
+  not started yet (São Paulo date), exported or not; the Worker log records who closed it.
 - **Editing days** (`applyDayChanges`) is the single write path for calendar edits and sheet syncs:
   it validates segments (`findSegmentProblem`), skips days left as they were, logs each changed day,
   and, before the month's first export, removes the confirmations of devs whose hours changed. A new day kind
@@ -191,9 +192,9 @@ once and refreshes; one never loaded shows skeletons (decisions #30).
   `localStorage`. A token the API refuses signs out. Admin screens ask for the team password, check
   it with `GET /team/check` and keep it for the tab; they work without a dev token (the first devs
   are created there).
-- **Month:** arrows from the first month in Coruja to the one after the newest. A month not opened
-  yet shows when it opens; if its 20th has passed and it is still
-  closed (the cron failed), a button opens it. With no month at all it points to the sheet import
+- **Month:** arrows from the first month in Coruja to the one after the newest. The month after the
+  newest, not opened yet, has a button that opens it; the ⋯ menu of an open month closes it again
+  when it can (dialog first). With no month at all it points to the sheet import
   (the first month comes from the sheet, decisions #16), opening with a suggestion only as a small link.
   "Hoje" shows today's on-call, from today's month in São Paulo time.
 - **Export:** the Office Script goes to the clipboard (with a button if the browser refuses); the

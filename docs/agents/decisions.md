@@ -14,7 +14,7 @@ never renumber.
 - [**#4** — Excel is filled by a generated Office Script](#4-excel-is-filled-by-a-generated-office-script)
 - [**#5** — Preferences are profile rules and planned absences; open-month exceptions are calendar edits](#5-preferences-are-profile-rules-and-planned-absences-open-month-exceptions-are-calendar-edits)
 - [**#6** — Scheduler: "can't" is hard, everything else is ordered goals](#6-scheduler-cant-is-hard-everything-else-is-ordered-goals)
-- [**#7** — Months open on the 20th with a suggestion and close manually](#7-months-open-on-the-20th-with-a-suggestion-and-close-manually)
+- [**#7** — Months open by hand, with a suggestion](#7-months-open-by-hand-with-a-suggestion)
 - [**#8** — Everything runs in one Cloudflare Worker with D1](#8-everything-runs-in-one-cloudflare-worker-with-d1)
 - [**#9** — Manager targets and "compensação" are out of scope](#9-manager-targets-and-compensacao-are-out-of-scope)
 - [**#10** — Microsoft integrations without admin consent](#10-microsoft-integrations-without-admin-consent)
@@ -38,6 +38,7 @@ never renumber.
 - [**#28** — Any dev can generate an open month's roster again, from scratch](#28-any-dev-can-generate-an-open-months-roster-again-from-scratch)
 - [**#29** — The Worker runs next to D1, not next to the user](#29-the-worker-runs-next-to-d1-not-next-to-the-user)
 - [**#30** — Screens hide the round trip: one wave, the last answer in memory, skeletons](#30-screens-hide-the-round-trip-one-wave-the-last-answer-in-memory-skeletons)
+- [**#31** — Closing a month undoes its opening](#31-closing-a-month-undoes-its-opening)
 
 ---
 
@@ -134,12 +135,12 @@ unassigned and flag it. Goals, from most to least important:
 **Don't "fix" by:** turning back-to-back avoidance into a hard rule, or assigning a `cant` day to
 fill a gap.
 
-### 7. Months open on the 20th with a suggestion and close manually
+### 7. Months open by hand, with a suggestion
 
-A cron opens the next month on the 20th and generates the suggestion right away — confirming makes
-no sense with nothing on the calendar. It runs **every day** at midnight in São Paulo and opens
-whatever month is due, so a failed run is made up the next day instead of leaving the month
-closed; before the first month exists it does nothing. **Every participant of the month confirms**, including a
+Any dev opens the next month **whenever the team wants**, and the suggestion is generated right
+away — confirming makes no sense with nothing on the calendar. The first design had a cron open it
+on the 20th; it was dropped: the team decides when, and an opening done too early can be undone
+(#31). **Every participant of the month confirms**, including a
 dev who got no shift. An edit resets the confirmation of every dev whose shifts changed. When
 everyone has confirmed, whoever is last runs the export.
 
@@ -148,7 +149,8 @@ There is no deadline and no closing (#26): anyone exports (no admin role for thi
 confirmed and exports anyway if they want. Swaps after the export are recorded on the same month
 (#20).
 
-**Don't "fix" by:** adding a deadline, or blocking the export on pending confirmations.
+**Don't "fix" by:** adding a deadline, blocking the export on pending confirmations, or bringing back
+an automatic opening.
 
 ### 8. Everything runs in one Cloudflare Worker with D1
 
@@ -389,7 +391,7 @@ is visible. Confirmations stop at the first export: after it, edits record swaps
 imported from the sheet (#16) is born exported.
 
 The calendar shows one month at a time, with arrows and the month in the URL. The default month is
-the current one, and from the 20th on the next one, which is the month being confirmed then.
+the current one, and from the 20th on the next one, which is usually the month being confirmed then.
 
 **Don't "fix" by:** bringing back a "closed" state, or resetting confirmations on an edit made
 after the export.
@@ -473,3 +475,18 @@ of moving the data:
 **Don't "fix" by:** keeping the cache in `localStorage` (another dev on the same browser, or a
 stale roster after a day away, would show first), or reloading the profile after each rule click
 (it brought the "half a second to register" back, and rapid clicks flickered).
+
+### 31. Closing a month undoes its opening
+
+With months opened by hand (#7), one can be opened too early or by mistake. **Closing** throws it
+away completely — roster, participants, confirmations, day kinds and its change log — and it is "not
+opened" again; opening it later makes a fresh suggestion. This is not the old "closed" state (#26):
+nothing is kept.
+
+- **Only before it starts, even after the export:** a started month is the roster people are on
+  call by. An exported one can go: the sheet keeps what was written until someone exports again.
+- **Only the newest month:** a later month's suggestion and balances read this one's hours.
+- **The month's log goes too** (its rows reference the month); the Worker log records who closed it.
+- **Any dev,** like opening and generating again (#28).
+
+**Don't "fix" by:** keeping a "closed" flag on the row, or refusing it after the export.

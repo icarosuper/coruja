@@ -2,16 +2,16 @@
   // One month: header with arrows and actions, the calendar, hours and the log (decisions #26).
   import { untrack } from 'svelte'
   import { toast } from 'svelte-sonner'
-  import { defaultMonth, opensOn } from '../../schedule/calendar'
+  import { defaultMonth } from '../../schedule/calendar'
   import { type MonthId, monthOf, nextMonth, previousMonth } from '../../schedule/dates'
   import type { DayKind, Segment } from '../../schedule/shifts'
   import { ApiFailure, api, call } from '../api'
   import { cached, remember } from '../cache.svelte'
   import { today } from '../calendar'
-  import { dayLabel } from '../format'
   import { links } from '../router.svelte'
   import { session } from '../session.svelte'
   import { downloadXlsx } from '../xlsx'
+  import CloseMonthDialog from './CloseMonthDialog.svelte'
   import DayEditor from './DayEditor.svelte'
   import ExportNotice from './ExportNotice.svelte'
   import HighlightSwitch from './HighlightSwitch.svelte'
@@ -46,6 +46,7 @@
   let editing = $state<MonthDay | null>(null)
   let onlyMine = $state(false)
   let isRegenerateOpen = $state(false)
+  let isCloseOpen = $state(false)
   let exportNotice: { kind: 'script'; script: string; copied: boolean } | { kind: 'grid' } | null =
     $state(null)
 
@@ -103,19 +104,16 @@
     load().catch((failure) => toast.error((failure as Error).message))
   })
 
-  // Arrows go from the first month in Coruja to the one after the newest (shown as "opens on…").
+  // Arrows go from the first month in Coruja to the one after the newest (shown as not opened yet).
   const newestMonth = $derived(months?.[0]?.id ?? null)
   const firstMonth = $derived(months?.at(-1)?.id ?? null)
   const lastNavigableMonth = $derived(newestMonth ? nextMonth(newestMonth) : defaultMonth(todayDate))
   const hasPrevious = $derived(firstMonth !== null && previousMonth(month) >= firstMonth)
   const hasNext = $derived(nextMonth(month) <= lastNavigableMonth)
 
-  /** Opening by hand: the first month, or the next one if the cron has not opened it after its 20th. */
+  /** Any dev opens the first month, or the one after the newest, whenever they want (decisions #7). */
   const canOpenNow = $derived(
-    view === null &&
-      months !== null &&
-      (newestMonth === null || month === nextMonth(newestMonth)) &&
-      todayDate >= opensOn(month),
+    view === null && months !== null && (newestMonth === null || month === nextMonth(newestMonth)),
   )
   const isBeforeCoruja = $derived(view === null && firstMonth !== null && month < firstMonth)
 
@@ -128,6 +126,13 @@
   function regenerate() {
     isRegenerateOpen = false
     act(() => call(api.api.months[':month'].regenerate.$post(monthParam())))
+  }
+
+  /** Undoing the opening: the newest month, not started yet, exported or not (decisions #31). */
+  const canCloseMonth = $derived(view !== null && month === newestMonth && month > todayMonth)
+  function closeMonth() {
+    isCloseOpen = false
+    act(() => call(api.api.months[':month'].$delete(monthParam())))
   }
 
   async function exportMonth(format: 'office_script' | 'paste_grid') {
@@ -168,6 +173,7 @@
     onUnconfirm={unconfirm}
     onExport={exportMonth}
     onRegenerate={canRegenerate ? () => (isRegenerateOpen = true) : null}
+    onCloseMonth={canCloseMonth ? () => (isCloseOpen = true) : null}
   />
 
   {#if exportNotice}
@@ -196,14 +202,10 @@
           </button>
         {/if}
       {:else}
-        <p class="mt-3 text-lg font-medium">
-          {todayDate >= opensOn(month)
-            ? 'Este mês ainda não foi aberto'
-            : `Este mês abre em ${dayLabel(opensOn(month))}`}
-        </p>
+        <p class="mt-3 text-lg font-medium">Este mês ainda não foi aberto</p>
         <p class="mt-1 text-sm text-stone-500">
-          Ele já abre com a escala sugerida pelos perfis. Até lá, deixe suas preferências e ausências em dia
-          no <a href="#/perfil" class="underline">Meu perfil</a>.
+          Qualquer um abre quando o time quiser, e ele já vem com a escala sugerida pelos perfis. Antes, deixe
+          suas preferências e ausências em dia no <a href="#/perfil" class="underline">Meu perfil</a>.
         </p>
         {#if canOpenNow}
           <button
@@ -245,6 +247,10 @@
     onSave={(kind, segments) => editing && saveDay(editing.date, kind, segments)}
     onClose={() => (editing = null)}
   />
+{/if}
+
+{#if isCloseOpen && view}
+  <CloseMonthDialog {view} onConfirm={closeMonth} onClose={() => (isCloseOpen = false)} />
 {/if}
 
 {#if isRegenerateOpen && view}

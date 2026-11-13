@@ -18,8 +18,7 @@ Feature → files. Update in the same change that adds, moves or removes somethi
 | Token / team password auth | `requireDev`, `requireTeamPassword`, `requireDevOrTeamPassword`, `generateToken`, `hashToken` — `src/worker/auth.ts` |
 | API errors `{ error: code }` | `ApiError` — `src/worker/errors.ts`; `app.onError` in `src/worker/index.ts` |
 | Input validation (zod) | `validate` + shared schemas — `src/worker/validation.ts` |
-| São Paulo date, default month, when a month opens | `saoPauloDate`, `defaultMonth`, `opensOn`, `monthsDueToOpen` — `src/schedule/calendar.ts` |
-| Daily cron: opens the next month on the 20th | `openDueMonths` — `src/worker/cron.ts`; `scheduled` in `src/worker/index.ts`; schedule in `wrangler.jsonc` `triggers.crons` |
+| São Paulo date, default month | `saoPauloDate`, `defaultMonth` — `src/schedule/calendar.ts` |
 
 ### API routes
 
@@ -38,7 +37,8 @@ Under `/api`. 🔑 = dev token, 🛡️ = team password.
 | `PUT /me/absences` 🔑 | mark or clear every day of a range as one the dev can't take; answers the merged periods | `setAbsenceDays` |
 | `GET /devs/:id/profile`, `PUT /devs/:id/rules`, `PUT /devs/:id/absences` 🛡️ | someone else's profile, edited by an admin | `routes/devs.ts` → `store/profile.ts` |
 | `GET /months` 🔑 | months and when each was last exported | `routes/months.ts` → `store/months.ts` `listMonths` |
-| `POST /months/:month/open` 🔑 | open with a suggested roster | `openMonth` |
+| `POST /months/:month/open` 🔑 | open with a suggested roster, any time (#7) | `openMonth` |
+| `DELETE /months/:month` 🔑 | close: undo the opening of the newest month, not started yet, exported or not (#31) | `closeMonth` |
 | `POST /months/:month/regenerate` 🔑 | a new suggestion from today's profiles, before the export and on the newest month; hand edits and confirmations go (#28) | `regenerateMonth` |
 | `GET /months/:month` 🔑 | calendar, hours, balances, confirmations, readiness, last export and changes after it, each active dev's preferences per date, hand edits since the suggestion | `monthView` |
 | `GET /months/:month/log` 🔑 | change log, newest first | `monthLog` |

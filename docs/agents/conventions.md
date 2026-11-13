@@ -7,7 +7,7 @@ are not repeated here.
 
 ```
 src/
-  worker/        Hono app (API, later the MCP endpoint) and cron.ts (the daily cron). Entry: index.ts
+  worker/        Hono app (API, later the MCP endpoint). Entry: index.ts
     bindings.ts  Worker bindings as a module type (see below); app-env.ts adds the request variables
     auth.ts      token and team password middlewares; errors.ts ApiError; validation.ts zod schemas
     routes/      one sub-app per resource (devs, me, months): HTTP only, no queries

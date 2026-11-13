@@ -6,16 +6,16 @@ Navigation guide for Claude Code in this repo. Critical rules are here; the rest
 
 Coruja: the dev team's **on-call (sobreaviso) roster** for the Banking column of the manager's
 monthly Excel sheet. Each dev keeps weekday preferences in a profile ("never on Sundays",
-"Thursday is good") and marks the specific days they can't take ("Dec 10"). On the 20th the next
-month opens with a roster already suggested from those profiles, balancing hours across devs; each
-dev confirms it or edits it, and once everyone has confirmed, someone runs the generated **Office
-Script** that fills the manager's sheet. It replaces the monthly meeting where the sheet was filled
+"Thursday is good") and marks the specific days they can't take ("Dec 10"). Whenever the team
+wants, a dev opens the next month with a roster already suggested from those profiles, balancing
+hours across devs; each dev confirms it or edits it, and once everyone has confirmed, someone runs
+the generated **Office Script** that fills the manager's sheet. It replaces the monthly meeting where the sheet was filled
 by hand.
 
 Infra and Sustentação are out of scope: they keep using the sheet directly.
 
 **Status:** database schema, shift rules, scheduler, sheet CSV reader and writer (Office Script,
-paste grid), the API, the screens (month, profile, admin) and the cron that opens months on the 20th.
+paste grid), the API, the screens (month, profile, admin); months are opened and closed by hand.
 Next: the first deploy (MVP) — see [docs/TODO.md](docs/TODO.md).
 Screens and visual design are decided with the user **before** they are coded.
 

@@ -1,10 +1,12 @@
 import { Hono } from 'hono'
 import { z } from 'zod'
+import { saoPauloDate } from '../../schedule/calendar'
 import type { AppEnv } from '../app-env'
 import { requireDev, requireTeamPassword } from '../auth'
 import { createDatabase } from '../db/client'
 import {
   applyDayChanges,
+  closeMonth,
   confirmMonth,
   EXPORT_FORMATS,
   exportMonth,
@@ -33,12 +35,20 @@ export const monthRoutes = new Hono<AppEnv>()
   .get('/:month', requireDev, validate('param', monthParam), async (context) => {
     return context.json(await monthView(createDatabase(context.env.DB), context.req.valid('param').month))
   })
-  /** Normally the cron does this on the 20th (decisions #7); also available by hand. */
+  /** Any dev, whenever the team wants the next month's roster (decisions #7). */
   .post('/:month/open', requireDev, validate('param', monthParam), async (context) => {
     const database = createDatabase(context.env.DB)
     const { month } = context.req.valid('param')
     await openMonth(database, month, context.var.dev.id)
     return context.json(await monthView(database, month), 201)
+  })
+  /** Undoes the opening of a month that has not started, exported or not (decisions #31). */
+  .delete('/:month', requireDev, validate('param', monthParam), async (context) => {
+    const { month } = context.req.valid('param')
+    await closeMonth(createDatabase(context.env.DB), month, saoPauloDate(new Date()))
+    // The month's own log goes with it: the Worker log is what records who closed it.
+    console.log(`${context.var.dev.nickname} closed ${month}`)
+    return context.json({ closed: month })
   })
   /** A new suggestion from today's profiles, before the first export (decisions #28). */
   .post('/:month/regenerate', requireDev, validate('param', monthParam), async (context) => {

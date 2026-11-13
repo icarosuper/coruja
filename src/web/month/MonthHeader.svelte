@@ -17,9 +17,21 @@
     onExport: (format: 'office_script' | 'paste_grid') => void
     /** Null when the roster cannot be generated again: exported, or a later month exists. */
     onRegenerate: (() => void) | null
+    /** Null when the opening cannot be undone: started, or a later month exists. */
+    onCloseMonth: (() => void) | null
   }
-  let { month, view, hasPrevious, hasNext, meId, onConfirm, onUnconfirm, onExport, onRegenerate }: Props =
-    $props()
+  let {
+    month,
+    view,
+    hasPrevious,
+    hasNext,
+    meId,
+    onConfirm,
+    onUnconfirm,
+    onExport,
+    onRegenerate,
+    onCloseMonth,
+  }: Props = $props()
 
   const pending = $derived(view?.participants.filter((participant) => !participant.confirmed) ?? [])
   const holes = $derived(view?.unassignedDates ?? [])
@@ -153,7 +165,7 @@
             </DropdownMenu.Item>
           </DropdownMenu.Content>
         </DropdownMenu.Root>
-        {#if onRegenerate}
+        {#if onRegenerate || onCloseMonth}
           <DropdownMenu.Root>
             <DropdownMenu.Trigger
               aria-label="Mais ações do mês"
@@ -163,12 +175,22 @@
               ⋯
             </DropdownMenu.Trigger>
             <DropdownMenu.Content align="end" class="w-[min(22rem,calc(100vw-2rem))] p-2">
-              <DropdownMenu.Item class="block px-3 py-2" onSelect={onRegenerate}>
-                <span class="font-medium">🔄 Gerar a escala de novo</span>
-                <span class="block text-xs text-stone-500"
-                  >Com os perfis de hoje. Apaga as mudanças feitas à mão.</span
-                >
-              </DropdownMenu.Item>
+              {#if onRegenerate}
+                <DropdownMenu.Item class="block px-3 py-2" onSelect={onRegenerate}>
+                  <span class="font-medium">🔄 Gerar a escala de novo</span>
+                  <span class="block text-xs text-stone-500"
+                    >Com os perfis de hoje. Apaga as mudanças feitas à mão.</span
+                  >
+                </DropdownMenu.Item>
+              {/if}
+              {#if onCloseMonth}
+                <DropdownMenu.Item class="block px-3 py-2" onSelect={onCloseMonth}>
+                  <span class="font-medium">🗑️ Fechar a escala</span>
+                  <span class="block text-xs text-stone-500"
+                    >Desfaz a abertura: o mês volta a não estar aberto.</span
+                  >
+                </DropdownMenu.Item>
+              {/if}
             </DropdownMenu.Content>
           </DropdownMenu.Root>
         {/if}
