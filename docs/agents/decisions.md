@@ -130,7 +130,9 @@ fill a gap.
 ### 7. Months open on the 20th with a suggestion and close manually
 
 A cron opens the next month on the 20th and generates the suggestion right away — confirming makes
-no sense with nothing on the calendar. **Every participant of the month confirms**, including a
+no sense with nothing on the calendar. It runs **every day** at midnight in São Paulo and opens
+whatever month is due, so a failed run is made up the next day instead of leaving the month
+closed; before the first month exists it does nothing. **Every participant of the month confirms**, including a
 dev who got no shift. An edit resets the confirmation of every dev whose shifts changed. When
 everyone has confirmed, whoever is last runs the export.
 

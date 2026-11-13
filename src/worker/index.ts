@@ -1,6 +1,10 @@
 import { Hono } from 'hono'
+import { saoPauloDate } from '../schedule/calendar'
 import type { AppEnv } from './app-env'
 import { requireTeamPassword } from './auth'
+import type { Bindings } from './bindings'
+import { openDueMonths } from './cron'
+import { createDatabase } from './db/client'
 import { ApiError } from './errors'
 import { devRoutes } from './routes/devs'
 import { meRoutes } from './routes/me'
@@ -27,4 +31,19 @@ app.onError((error, context) => {
 export type AppType = typeof app
 
 export { app }
-export default app
+
+/** The scheduled run of `triggers.crons` in wrangler.jsonc. */
+async function openMonthsOnSchedule(scheduledTime: number, env: Bindings): Promise<void> {
+  const opened = await openDueMonths(createDatabase(env.DB), saoPauloDate(new Date(scheduledTime)))
+  if (opened.length > 0) console.log(`Opened ${opened.join(', ')} with the suggested roster`)
+}
+
+// Typed by hand, not with `ExportedHandler`: the web app type-checks this file with the DOM types.
+type ScheduledController = { scheduledTime: number }
+type ScheduledContext = { waitUntil: (promise: Promise<unknown>) => void }
+
+export default {
+  fetch: app.fetch,
+  scheduled: (controller: ScheduledController, env: Bindings, context: ScheduledContext) =>
+    context.waitUntil(openMonthsOnSchedule(controller.scheduledTime, env)),
+}

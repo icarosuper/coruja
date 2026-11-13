@@ -1,10 +1,11 @@
 <script lang="ts">
   // One month: header with arrows and actions, the calendar, hours and the log (decisions #26).
   import { toast } from 'svelte-sonner'
+  import { defaultMonth, opensOn } from '../../schedule/calendar'
   import { type MonthId, monthOf, nextMonth, previousMonth } from '../../schedule/dates'
   import type { DayKind, Segment } from '../../schedule/shifts'
   import { api, call } from '../api'
-  import { defaultMonth, opensOn, today } from '../calendar'
+  import { today } from '../calendar'
   import { dayLabel } from '../format'
   import { session } from '../session.svelte'
   import { downloadXlsx } from '../xlsx'
@@ -77,7 +78,7 @@
   const hasPrevious = $derived(firstMonth !== null && previousMonth(month) >= firstMonth)
   const hasNext = $derived(nextMonth(month) <= lastNavigableMonth)
 
-  /** Opening by hand: the next month (or the first one) once its 20th has come. The cron does it too. */
+  /** Opening by hand: the first month, or the next one if the cron has not opened it after its 20th. */
   const canOpenNow = $derived(
     view === null &&
       months !== null &&

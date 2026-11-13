@@ -6,7 +6,7 @@
 **Closed so far:** *(2026-11-12)* planning and repo skeleton (Worker + D1 + Svelte shell, docs);
 holidays, month boundary, UI language, starting balance, Drizzle, Svelte and the typed client
 decided (decisions #11–#16); release model (#17); participation weight, joining/leaving devs,
-editable closed months, change log, unassigned days (#18–#22); swap sync via CSV diff + MCP (#23). Database schema and first migration (10 tables). Holidays and hour counting (`src/schedule/`). Sheet CSV reader (`src/sheet/`), checked against the November export. Scheduler (`suggestRoster`, #24). API: auth, devs, profile, months (open, edit, confirm, close), November import, sheet diff and sync (#25). Closing replaced by recorded exports; Office Script and paste-grid generator (`src/sheet/export.ts`); admin edits of someone else's profile (#26). Screens: token entry, month (arrows, calendar, day editor, confirm, export), profile, admin (#27).
+editable closed months, change log, unassigned days (#18–#22); swap sync via CSV diff + MCP (#23). Database schema and first migration (10 tables). Holidays and hour counting (`src/schedule/`). Sheet CSV reader (`src/sheet/`), checked against the November export. Scheduler (`suggestRoster`, #24). API: auth, devs, profile, months (open, edit, confirm, close), November import, sheet diff and sync (#25). Closing replaced by recorded exports; Office Script and paste-grid generator (`src/sheet/export.ts`); admin edits of someone else's profile (#26). Screens: token entry, month (arrows, calendar, day editor, confirm, export), profile, admin (#27). Daily cron that opens the next month on the 20th.
 
 ## Open questions (ask the user)
 
@@ -31,11 +31,10 @@ editable closed months, change log, unassigned days (#18–#22); swap sync via C
 
 ## Build order
 
-1. **Cron** — open the next month on the 20th.
-2. **Outlook `.ics` feed** per dev.
-3. **MCP server** for Claude Code.
-4. **Teams notifications** (if the Workflows question resolves).
-5. **PR previews with a staging database** — a `preview` environment in `wrangler.jsonc` (separate
+1. **Outlook `.ics` feed** per dev.
+2. **MCP server** for Claude Code.
+3. **Teams notifications** (if the Workflows question resolves).
+4. **PR previews with a staging database** — a `preview` environment in `wrangler.jsonc` (separate
    Worker `coruja-preview` + its own D1 `coruja-staging` with seed data); Workers Builds runs
    `wrangler versions upload` for non-`master` branches, building with `CLOUDFLARE_ENV=preview`
    so the Vite plugin picks that environment. One staging DB shared by all PRs.

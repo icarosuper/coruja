@@ -7,7 +7,7 @@ How Coruja is put together and what must stay true. Not a symbol list — for "w
 calendar month, segment validation), the **scheduler**, the **sheet reader and writer** (Banking
 roster out of the CSV export; Office Script and paste grid back into the sheet), the **API** (auth,
 devs, profiles, months: open, edit, confirm, export, import, sheet diff and sync) and the
-**screens** (token entry, month, profile, admin) exist. The cron that opens months does not yet.
+**screens** (token entry, month, profile, admin) and the **cron** that opens months exist.
 
 ## Deploy shape
 
@@ -19,8 +19,9 @@ One Cloudflare Worker serves everything:
   by drizzle-kit into `migrations/` and applied by wrangler.
 - The web app imports only the **type** `AppType` from the Worker and builds a typed client from it
   (`src/web/api.ts`). No runtime code crosses from `src/worker/` to `src/web/`.
-- Planned: a Cron Trigger (opens the next month on the 20th) and a remote MCP endpoint in the same
-  Worker.
+- A Cron Trigger runs the same Worker daily at 03:00 UTC (midnight in São Paulo) and opens the next
+  month on the 20th (`src/worker/cron.ts`).
+- Planned: a remote MCP endpoint in the same Worker.
 
 ## Domain
 
@@ -161,8 +162,11 @@ call `store/` (reads and writes in D1, the domain rules in `src/schedule/` and `
 - **Writes are atomic**: one D1 batch per operation (`runBatch`), multi-row inserts chunked under
   D1's 100-parameter limit (`insertRows`).
 - **Opening a month** runs the scheduler inside the request (a few ms of CPU for one team).
-  Participants = active devs with weight above 0, weights frozen. Until the cron exists, any dev
-  opens a month by hand; a month can only be added after the latest one.
+  Participants = active devs with weight above 0, weights frozen. A month can only be added after
+  the latest one. The **cron** runs daily and opens every month after the newest up to the default
+  one (`monthsDueToOpen`): the next month from the 20th on, São Paulo date, so a failed run is made
+  up the next day. It opens nothing while there is no month yet: the first month comes from the
+  import or is opened by hand. Any dev can also open a month by hand.
 - **Editing days** (`applyDayChanges`) is the single write path for calendar edits and sheet syncs:
   it validates segments (`findSegmentProblem`), skips days left as they were, logs each changed day,
   and, before the month's first export, removes the confirmations of devs whose hours changed. A new day kind
@@ -184,7 +188,8 @@ reloads after every action; there is no client cache.
   it with `GET /team/check` and keep it for the tab; they work without a dev token (the first devs
   are created there).
 - **Month:** arrows from the first month in Coruja to the one after the newest. A month not opened
-  yet shows when it opens; once its 20th has passed (the cron does not exist yet), a button opens it.
+  yet shows when it opens; if its 20th has passed and it is still
+  closed (the cron failed, or it is the first month), a button opens it.
   "Hoje" shows today's on-call, from today's month in São Paulo time.
 - **Export:** the Office Script goes to the clipboard (with a button if the browser refuses); the
   paste grid becomes an `.xlsx` built in the browser (`xlsx.ts`, `fflate`).

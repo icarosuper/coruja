@@ -1,9 +1,10 @@
 <script lang="ts">
   import { ModeWatcher, setMode, userPrefersMode } from 'mode-watcher'
   import { Toaster } from '$lib/components/ui/sonner/index.js'
+  import { defaultMonth } from '../schedule/calendar'
   import AdminPage from './admin/AdminPage.svelte'
   import { api, call } from './api'
-  import { defaultMonth } from './calendar'
+  import { today } from './calendar'
   import MonthPage from './month/MonthPage.svelte'
   import ProfilePage from './profile/ProfilePage.svelte'
   import { links, router } from './router.svelte'
@@ -110,7 +111,7 @@
           <ProfilePage devId={route.devId} />
         {/key}
       {:else if route.name === 'month'}
-        {@const month = route.month ?? defaultMonth()}
+        {@const month = route.month ?? defaultMonth(today())}
         {#key month}
           <MonthPage {month} />
         {/key}

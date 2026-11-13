@@ -49,6 +49,18 @@ iconv -f WINDOWS-1252 -t UTF-8 sheet.csv | jq -Rs '{csv: .}' |
 
 Every route is listed in [features-index.md](../agents/features-index.md#api-routes).
 
+### Trying the cron
+
+The cron (daily, 03:00 UTC) opens the next month on the 20th. With `bun run dev` running, fire it by
+hand:
+
+```bash
+curl 'http://localhost:5173/cdn-cgi/handler/scheduled'
+```
+
+It uses today's date, so it opens something only from the 20th on (and only after the first month
+exists); `src/worker/cron.test.ts` covers the other dates.
+
 ### Trying the scheduler
 
 ```bash
