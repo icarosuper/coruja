@@ -111,14 +111,36 @@ Cloudflare account); the deploy creates its DNS record and certificate.
 
 Every push to `master` deploys itself through **Workers Builds** (decisions #17), set up once in the
 dashboard: Workers & Pages → `coruja` → Settings → Build → Connect the GitHub repo, production branch
-`master`, build command `bun run build`, deploy command `npx wrangler deploy`. Preview builds are
-off: other branches would get a preview that talks to the production D1 (staging is in
-`docs/TODO.md`).
+`master`, build command `bun run build`, deploy command `bun run deploy:ci`. That command applies
+the pending migrations to the production D1 and only then deploys (migrations go first and stay
+backward compatible, decisions #17); a migration that fails stops the deploy.
 
-Workers Builds ships code only. A migration goes to D1 by hand, **before** the push that needs it:
+`bun run deploy` still deploys the working tree by hand, for when the build is down (run
+`bun run db:migrate:remote` first if it brings a migration).
+
+### PR previews
+
+Every other branch gets a **Worker Preview** (decisions #33) at
+`<branch>-coruja.<subdomain>.workers.dev`, with its own database (`coruja-staging`, one for all
+branches), its own team password and no notifications. Set up once:
+
+1. Workers & Pages → `coruja` → Settings → Build: tick **Enable Preview Builds** and set the preview
+   command to `bun run preview:ci` (applies migrations to staging, then `wrangler preview`). If the
+   dashboard offers the one-time switch to Worker Previews, accept it (it cannot be undone; it does
+   not touch production).
+2. `preview_urls: true` (in `wrangler.jsonc`) reaches the Worker on the next deploy of `master`;
+   until then previews exist but have no URL.
+3. The previews' secrets live in the Preview base config, not in the Worker's:
+
+   ```bash
+   bunx wrangler preview base-config secret put TEAM_PASSWORD   # the previews' admin password
+   ```
+
+`coruja-staging` is used through `wrangler.staging.jsonc` (`wrangler d1` does not read the `previews`
+block). To start it over with a made-up team and the current month open:
 
 ```bash
-bun run db:migrate:remote
+TEAM_PASSWORD=<previews' password> bun run staging:seed https://<branch>-coruja.<subdomain>.workers.dev
 ```
 
-`bun run deploy` still deploys the working tree by hand, for when the build is down.
+It empties every table, creates the devs through that preview's API and prints their tokens.

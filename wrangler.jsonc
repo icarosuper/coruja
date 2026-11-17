@@ -25,6 +25,24 @@
   "vars": { "APP_URL": "https://coruja.verme.net" },
   // Shift reminders: every minute, the Worker sends whatever reminder is due (decisions #32).
   "triggers": { "crons": ["* * * * *"] },
+  // PR previews (decisions #33): every branch but master gets <branch>-coruja.<subdomain>.workers.dev
+  // through Workers Builds' `wrangler preview`. Previews inherit nothing from production: they get the
+  // staging database below, their own TEAM_PASSWORD (Preview base config) and no NTFY_* secrets, so
+  // they never notify anyone. Cron triggers do not run on previews.
+  "preview_urls": true,
+  "previews": {
+    "d1_databases": [
+      {
+        "binding": "DB",
+        "database_name": "coruja-staging",
+        "database_id": "755bc250-6a69-4bd6-8033-cb4fa7b52d86",
+        "migrations_dir": "migrations"
+      }
+    ],
+    "vars": { "APP_URL": "" },
+    "placement": { "region": "aws:us-east-1" },
+    "observability": { "enabled": true }
+  },
   // Secrets: `.dev.vars` locally, `wrangler secret put <NAME>` in production. TEAM_PASSWORD, and
   // NTFY_URL + NTFY_TOKEN for notifications (both optional: unset = no notifications).
   "observability": {

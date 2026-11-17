@@ -5,7 +5,7 @@ Choices that look wrong (or arbitrary) but are intentional. Read before "fixing"
 ## Index
 
 Entries are **self-contained**: read only the one you were pointed at. Cite by **anchor**, never by
-line number. A new entry takes the **next number** (highest today is **#32**) plus one line here;
+line number. A new entry takes the **next number** (highest today is **#33**) plus one line here;
 never renumber.
 
 - [**#1** — Only the dev team's Banking column; devs are nicknames](#1-only-the-dev-teams-banking-column-devs-are-nicknames)
@@ -40,6 +40,7 @@ never renumber.
 - [**#30** — Screens hide the round trip: one wave, the last answer in memory, skeletons](#30-screens-hide-the-round-trip-one-wave-the-last-answer-in-memory-skeletons)
 - [**#31** — Closing a month undoes its opening](#31-closing-a-month-undoes-its-opening)
 - [**#32** — Notifications go through ntfy, sent by a cron every minute](#32-notifications-go-through-ntfy-sent-by-a-cron-every-minute)
+- [**#33** — PR previews are Worker Previews on a shared staging database](#33-pr-previews-are-worker-previews-on-a-shared-staging-database)
 
 ---
 
@@ -275,8 +276,8 @@ release branches: it is a single web deployment, nobody installs or picks a vers
 keeps previous Worker versions, so `wrangler rollback` undoes a bad deploy in seconds. The change
 log is `git log`: squash merges with Conventional Commit titles give one line per PR.
 
-Rollback only reverts **code**, not D1. So migrations are applied **before** the deploy and must
-work with the previous code too (expand/contract: add the new column in one deploy, drop the old
+Rollback only reverts **code**, not D1. So migrations are applied **before** the deploy (by the
+deploy command itself, `bun run deploy:ci`) and must work with the previous code too (expand/contract: add the new column in one deploy, drop the old
 one in a later deploy).
 
 Tags are milestones only, with a GitHub Release whose notes are generated from PR titles — the
@@ -522,4 +523,24 @@ already runs one; the devs install the app and subscribe once.
 
 **Don't "fix" by:** hard-coding the server, generating random topics, scheduling reminders in ntfy
 at export time, or making the cron open months.
+
+### 33. PR previews are Worker Previews on a shared staging database
+
+Every branch but `master` is built by Workers Builds into a **Worker Preview** of the same `coruja`
+Worker (`<branch>-coruja.<subdomain>.workers.dev`). Previews inherit nothing from production: the
+`previews` block of `wrangler.jsonc` binds `DB` to `coruja-staging`, and the Preview base config
+holds a team password of their own. With no `NTFY_*` there, a preview never notifies a real dev, and
+Cloudflare runs no cron on previews.
+
+- **One staging database for every branch**, migrated by the preview build (`bun run preview:ci`).
+  Two open PRs with different migrations share it: acceptable for a team this size. Reset it with
+  `bun run staging:seed`, which fills it through a preview's API with made-up nicknames.
+- **Worker Previews, not a second Worker** (`coruja-preview` with a Wrangler environment, the first
+  plan): no second build to keep in sync, and the URL follows the branch name.
+- **`wrangler.staging.jsonc`** exists only because `wrangler d1` does not read the `previews` block.
+- **Production migrations run in the deploy command** (`bun run deploy:ci`), before `wrangler
+  deploy`, instead of by hand (#17).
+
+**Don't "fix" by:** pointing previews at the production database, adding `NTFY_*` to the Preview
+base config, or seeding staging with real nicknames.
 

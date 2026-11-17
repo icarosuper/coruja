@@ -1,0 +1,15 @@
+{
+  // Only for D1 commands on the PR previews' database (decisions #33): `wrangler d1 ...` does not
+  // read the `previews` block of wrangler.jsonc. Never deployed. Keep the id in sync with it.
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "coruja",
+  "compatibility_date": "2026-11-01",
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "coruja-staging",
+      "database_id": "755bc250-6a69-4bd6-8033-cb4fa7b52d86",
+      "migrations_dir": "migrations"
+    }
+  ]
+}
