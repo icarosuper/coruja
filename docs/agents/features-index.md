@@ -18,6 +18,7 @@ Feature → files. Update in the same change that adds, moves or removes somethi
 | Token / team password auth | `requireDev`, `requireTeamPassword`, `requireDevOrTeamPassword`, `generateToken`, `hashToken` — `src/worker/auth.ts` |
 | API errors `{ error: code }` | `ApiError` — `src/worker/errors.ts`; `app.onError` in `src/worker/index.ts` |
 | Input validation (zod) | `validate` + shared schemas — `src/worker/validation.ts` |
+| PR previews' database: migrate, reset with a made-up team | `bun run db:migrate:staging`, `bun run staging:seed` — `scripts/seed-staging.ts`, `wrangler.staging.jsonc` |
 | São Paulo date, default month | `saoPauloDate`, `defaultMonth` — `src/schedule/calendar.ts` |
 
 ### API routes

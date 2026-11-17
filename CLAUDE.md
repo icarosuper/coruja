@@ -34,6 +34,8 @@ bun run db:generate         # new SQL migration from src/worker/db/schema.ts (dr
 bun run db:migrate:local    # apply migrations/ to the local D1
 bun run suggest <team.json> # print the scheduler's suggestion for a team file (scripts/example-team.json)
 bun run deploy              # deploy by hand; a push to master deploys via Workers Builds (guide)
+bun run db:migrate:staging  # apply migrations/ to the PR previews' D1 (the preview build does it too)
+bun run staging:seed <url>  # reset the previews' D1 with a made-up team (TEAM_PASSWORD = previews')
 ```
 
 Setup and deploy: [docs/guides/development.md](docs/guides/development.md).
@@ -110,7 +112,10 @@ The subject states the behavior, not the file: describe the rule that now holds.
   squash-only and the **PR title becomes the commit subject**, so it follows the commit style below;
   CI checks it. Contributor guide: [CONTRIBUTING.md](CONTRIBUTING.md).
 - CI (`.github/workflows/ci.yml`) runs `bun run verify` and the build on every push and PR.
-- **Every merge to `master` ships to production** (rolling release). A migration must work with the
+- **Every branch gets a preview** on a staging database
+  ([#33](docs/agents/decisions.md#33-pr-previews-are-worker-previews-on-a-shared-staging-database)).
+- **Every merge to `master` ships to production** (rolling release), migrations first, applied by
+  the deploy itself. A migration must work with the
   previous code too — never drop or rename what the current code reads in the same change
   ([decisions.md #17](docs/agents/decisions.md#17-rolling-release-from-master-migrations-stay-backward-compatible)).
 

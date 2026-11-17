@@ -22,6 +22,24 @@
   // Runs /api/* next to the D1 primary (ENAM, Northern Virginia): one long hop per request instead of
   // one per query. Static assets are still served from the edge (decisions #29).
   "placement": { "region": "aws:us-east-1" },
+  // PR previews (decisions #33): every branch but master gets <branch>-coruja.<subdomain>.workers.dev
+  // through Workers Builds' `wrangler preview`. Previews inherit nothing from production: they get the
+  // staging database below, their own TEAM_PASSWORD (Preview base config) and no NTFY_* secrets, so
+  // they never notify anyone. Cron triggers do not run on previews.
+  "preview_urls": true,
+  "previews": {
+    "d1_databases": [
+      {
+        "binding": "DB",
+        "database_name": "coruja-staging",
+        "database_id": "755bc250-6a69-4bd6-8033-cb4fa7b52d86",
+        "migrations_dir": "migrations"
+      }
+    ],
+    "vars": { "APP_URL": "" },
+    "placement": { "region": "aws:us-east-1" },
+    "observability": { "enabled": true }
+  },
   // TEAM_PASSWORD is a secret: `.dev.vars` locally, `wrangler secret put TEAM_PASSWORD` in production.
   "observability": {
     "enabled": true

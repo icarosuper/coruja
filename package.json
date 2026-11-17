@@ -7,6 +7,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "deploy": "vite build && wrangler deploy",
+    "deploy:ci": "bun run db:migrate:remote && wrangler deploy",
+    "preview:ci": "bun run db:migrate:staging && wrangler preview",
     "cf-typegen": "wrangler types",
     "typecheck": "svelte-check --tsconfig ./tsconfig.web.json --fail-on-warnings && tsc -p tsconfig.worker.json --noEmit && tsc -p tsconfig.scripts.json --noEmit",
     "check": "biome check",
@@ -16,6 +18,8 @@
     "db:migrate:local": "wrangler d1 migrations apply coruja --local",
     "db:migrate:remote": "wrangler d1 migrations apply coruja --remote",
     "db:generate": "drizzle-kit generate",
+    "db:migrate:staging": "wrangler d1 migrations apply coruja-staging --remote -c wrangler.staging.jsonc",
+    "staging:seed": "bun scripts/seed-staging.ts",
     "suggest": "bun scripts/suggest-roster.ts"
   },
   "dependencies": {
