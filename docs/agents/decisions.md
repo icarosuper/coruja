@@ -529,8 +529,9 @@ at export time, or making the cron open months.
 Every branch but `master` is built by Workers Builds into a **Worker Preview** of the same `coruja`
 Worker (`<branch>-coruja.<subdomain>.workers.dev`). Previews inherit nothing from production: the
 `previews` block of `wrangler.jsonc` binds `DB` to `coruja-staging`, and the Preview base config
-holds a team password of their own. With no `NTFY_*` there, a preview never notifies a real dev, and
-Cloudflare runs no cron on previews.
+holds a team password of their own. Its `NTFY_URL` is `https://ntfy.invalid` (a domain that never
+resolves) and it has no `NTFY_TOKEN`: the profile's notifications section shows, but a preview never
+notifies a real dev, and Cloudflare runs no cron on previews.
 
 - **One staging database for every branch**, migrated by the preview build (`bun run preview:ci`).
   Two open PRs with different migrations share it: acceptable for a team this size. Reset it with
@@ -541,6 +542,6 @@ Cloudflare runs no cron on previews.
 - **Production migrations run in the deploy command** (`bun run deploy:ci`), before `wrangler
   deploy`, instead of by hand (#17).
 
-**Don't "fix" by:** pointing previews at the production database, adding `NTFY_*` to the Preview
-base config, or seeding staging with real nicknames.
+**Don't "fix" by:** pointing previews at the production database, pointing the Preview base config's
+`NTFY_URL` at a real server, or seeding staging with real nicknames.
 

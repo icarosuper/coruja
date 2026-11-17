@@ -122,7 +122,7 @@ backward compatible, decisions #17); a migration that fails stops the deploy.
 
 Every other branch gets a **Worker Preview** (decisions #33) at
 `<branch>-coruja.<subdomain>.workers.dev`, with its own database (`coruja-staging`, one for all
-branches), its own team password and no notifications. Set up once:
+branches), its own team password and a fake ntfy server, so nobody is notified. Set up once:
 
 1. Workers & Pages → `coruja` → Settings → Build: tick **Enable Preview Builds** and set the preview
    command to `bun run preview:ci` (applies migrations to staging, then `wrangler preview`). If the
@@ -134,7 +134,11 @@ branches), its own team password and no notifications. Set up once:
 
    ```bash
    bunx wrangler preview base-config secret put TEAM_PASSWORD   # the previews' admin password
+   bunx wrangler preview base-config secret put NTFY_URL        # https://ntfy.invalid, never a real server
    ```
+
+   A Preview gets the base config only when it is created: one created before a secret was set
+   needs `bunx wrangler preview secret put <NAME> --name <branch>`.
 
 `coruja-staging` is used through `wrangler.staging.jsonc` (`wrangler d1` does not read the `previews`
 block). To start it over with a made-up team and the current month open:

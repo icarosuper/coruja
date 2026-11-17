@@ -94,18 +94,7 @@
 {/snippet}
 
 <section class="space-y-4">
-  <div class="flex items-center gap-2">
-    <h2 class="font-medium">Notificações</h2>
-    {#if subscription}
-      <button
-        type="button"
-        onclick={() => (isHelpOpen = true)}
-        class="ml-auto flex items-center gap-1.5 rounded-md px-2 py-1 text-sm text-stone-600 hover:bg-stone-100"
-      >
-        <CircleHelpIcon class="size-4" />Ajuda
-      </button>
-    {/if}
-  </div>
+  <h2 class="font-medium">Notificações</h2>
 
   {#if !subscription}
     <p class="text-sm text-stone-500">Notificações não configuradas pelo admin.</p>
@@ -134,14 +123,23 @@
           Assine <b class="font-mono text-stone-900">{subscription.topic}</b> no app ntfy para receber os
           avisos dos seus turnos no celular.
         </p>
-        <button
-          type="button"
-          onclick={test}
-          disabled={isTesting}
-          class="flex items-center gap-1.5 rounded-md border border-stone-300 bg-white px-2.5 py-1 font-medium text-stone-900 hover:bg-stone-50 disabled:opacity-50"
-        >
-          <SendIcon class="size-4" />Enviar teste
-        </button>
+        <div class="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onclick={test}
+            disabled={isTesting}
+            class="flex items-center gap-1.5 rounded-md border border-stone-300 bg-white px-2.5 py-1 font-medium text-stone-900 hover:bg-stone-50 disabled:opacity-50"
+          >
+            <SendIcon class="size-4" />Enviar teste
+          </button>
+          <button
+            type="button"
+            onclick={() => (isHelpOpen = true)}
+            class="flex items-center gap-1.5 rounded-md px-2 py-1 text-stone-600 hover:bg-stone-100"
+          >
+            <CircleHelpIcon class="size-4" />Ajuda
+          </button>
+        </div>
       </div>
     </div>
   {/if}
@@ -236,7 +234,8 @@
         <li>Toque em <b>Enviar teste</b> aqui no perfil para conferir.</li>
       </ol>
       <p class="text-sm text-stone-500">
-        Para parar de receber, desligue os avisos no perfil ou cancele a assinatura no app.
+        Para receber menos, desligue o que não quiser em <b>Quando avisar</b> e <b>Outros avisos</b>. Para não
+        receber nada, cancele a assinatura do tópico no app.
       </p>
     </Dialog.Content>
   </Dialog.Root>

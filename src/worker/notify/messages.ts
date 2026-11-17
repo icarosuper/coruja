@@ -1,4 +1,4 @@
-import { type IsoDate, type MonthId, weekdayOf } from '../../schedule/dates'
+import { addDays, type IsoDate, type MonthId, weekdayOf } from '../../schedule/dates'
 import type { Reminder } from '../../schedule/reminders'
 import { type DayKind, type Segment, shiftLength, shiftStartHour } from '../../schedule/shifts'
 
@@ -30,32 +30,60 @@ export function monthText(month: MonthId): string {
   return MONTH_NAMES[Number(month.slice(5)) - 1] ?? month
 }
 
-function clockText(kind: DayKind, hour: number): string {
-  return `${String((shiftStartHour(kind) + hour) % 24).padStart(2, '0')}:00`
+const HOURS_PER_DAY = 24
+
+/** How many days after the shift's day, and the clock, of an hour counted from the shift start. */
+function momentOf(kind: DayKind, hourOfShift: number) {
+  const hourOfDay = shiftStartHour(kind) + hourOfShift
+  return {
+    daysLater: Math.floor(hourOfDay / HOURS_PER_DAY),
+    clock: `${String(hourOfDay % HOURS_PER_DAY).padStart(2, '0')}:00`,
+  }
 }
 
-/** "18:00 → 09:00 (15h)", or "18:00 → 23:00 e 04:00 → 09:00" for a split shift. */
-export function shiftText(kind: DayKind, segments: Segment<number>[]): string {
-  const ranges = segments.map(
-    (segment) => `${clockText(kind, segment.fromHour)} → ${clockText(kind, segment.toHour)}`,
-  )
+/** "18:00", or "09:00 de sex 11/12" when the hour falls on another day than the shift's. */
+function momentText(date: IsoDate, kind: DayKind, hourOfShift: number): string {
+  const { daysLater, clock } = momentOf(kind, hourOfShift)
+  return daysLater === 0 ? clock : `${clock} de ${dayText(addDays(date, daysLater))}`
+}
+
+/** "das 18:00 às 09:00 de sex 11/12"; the day is said once when both ends fall on it. */
+function rangeText(date: IsoDate, kind: DayKind, segment: Segment<number>): string {
+  const start = momentOf(kind, segment.fromHour)
+  const end = momentOf(kind, segment.toHour)
+  const isSameDay = start.daysLater === end.daysLater
+  const from = isSameDay ? start.clock : momentText(date, kind, segment.fromHour)
+  return `das ${from} às ${momentText(date, kind, segment.toHour)}`
+}
+
+/** "das 18:00 às 09:00 de sex 11/12 (15h)"; a split shift lists each part and the share it is. */
+export function shiftText(date: IsoDate, kind: DayKind, segments: Segment<number>[]): string {
+  const ranges = segments.map((segment) => rangeText(date, kind, segment))
   const hours = segments.reduce((sum, segment) => sum + segment.toHour - segment.fromHour, 0)
   const isWholeShift = hours === shiftLength(kind)
-  return isWholeShift
-    ? `${ranges.join(' e ')} (${hours}h)`
-    : `${ranges.join(' e ')} (${hours}h de ${shiftLength(kind)}h)`
-}
-
-const REMINDER_TITLES: Record<Reminder['kind'], string> = {
-  eve: 'Sobreaviso amanhã',
-  day: 'Sobreaviso hoje',
-  shift_start: 'Seu sobreaviso começou',
+  const total = isWholeShift ? `${hours}h` : `${hours}h de ${shiftLength(kind)}h`
+  return `${ranges.join(' e ')} (${total})`
 }
 
 export function reminderText(reminder: Reminder) {
-  return {
-    title: REMINDER_TITLES[reminder.kind],
-    message: `${dayText(reminder.date)}: ${shiftText(reminder.dayKind, reminder.segments)}`,
+  const { date, dayKind, segments } = reminder
+  const day = dayText(date)
+  switch (reminder.kind) {
+    case 'eve':
+      return {
+        title: 'Sobreaviso amanhã',
+        message: `Amanhã (${day}) você está de sobreaviso ${shiftText(date, dayKind, segments)}.`,
+      }
+    case 'day':
+      return {
+        title: 'Sobreaviso hoje',
+        message: `Hoje (${day}) você está de sobreaviso ${shiftText(date, dayKind, segments)}.`,
+      }
+    case 'shift_start': {
+      const started = segments.find((segment) => segment.fromHour === reminder.fromHour)
+      const until = momentText(date, dayKind, started?.toHour ?? shiftLength(dayKind))
+      return { title: 'Seu sobreaviso começou', message: `Você está de sobreaviso agora, até ${until}.` }
+    }
   }
 }
 
@@ -66,19 +94,29 @@ export function shiftChangeText(
 ) {
   const lines = changes.map((change) => {
     const isStillOnShift = change.segments.length > 0
-    const now = isStillOnShift ? shiftText(change.kind, change.segments) : 'você saiu da escala'
-    return `${dayText(change.date)}: ${now}`
+    const now = isStillOnShift
+      ? `agora você está de sobreaviso ${shiftText(change.date, change.kind, change.segments)}`
+      : 'você não está mais de sobreaviso'
+    return `• ${dayText(change.date)}: ${now}`
   })
-  if (actorNickname) lines.push(`Mudança feita por ${actorNickname}.`)
-  return { title: 'Sua escala mudou', message: lines.join('\n') }
+  const intro = actorNickname ? `${actorNickname} mudou seus turnos:` : 'Seus turnos mudaram:'
+  return { title: 'Sua escala mudou', message: [intro, ...lines].join('\n') }
 }
 
 export function monthOpenedText(month: MonthId, actorNickname: string, isRegenerated: boolean) {
-  const action = isRegenerated ? 'gerada de novo' : 'aberta'
-  return {
-    title: `Escala de ${monthText(month)} ${action}`,
-    message: `${actorNickname} ${isRegenerated ? 'gerou a escala de novo' : 'abriu o mês'}. Confira seus turnos e confirme.`,
-  }
+  const name = monthText(month)
+  return isRegenerated
+    ? {
+        title: `Escala de ${name} gerada de novo`,
+        message: `${actorNickname} gerou a escala de ${name} de novo. Confira seus turnos e confirme no Coruja.`,
+      }
+    : {
+        title: `Escala de ${name} aberta`,
+        message: `${actorNickname} abriu a escala de ${name}. Confira seus turnos e confirme no Coruja.`,
+      }
 }
 
-export const TEST_TEXT = { title: 'Coruja', message: 'As notificações estão funcionando.' }
+export const TEST_TEXT = {
+  title: 'Coruja',
+  message: 'As notificações estão funcionando. Os avisos dos seus turnos de sobreaviso chegam aqui.',
+}
