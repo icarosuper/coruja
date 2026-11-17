@@ -15,7 +15,8 @@ by hand.
 Infra and Sustentação are out of scope: they keep using the sheet directly.
 
 **Status:** database schema, shift rules, scheduler, sheet CSV reader and writer (Office Script,
-paste grid), the API, the screens (month, profile, admin); months are opened and closed by hand.
+paste grid), the API, the screens (month, profile, admin), ntfy notifications (cron every minute for
+shift reminders); months are opened and closed by hand.
 Next: the first deploy (MVP) — see [docs/TODO.md](docs/TODO.md).
 Screens and visual design are decided with the user **before** they are coded.
 

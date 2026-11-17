@@ -12,6 +12,7 @@ import type { Bindings } from '../bindings'
 const MIGRATIONS_DIR = join(import.meta.dirname, '../../../migrations')
 const STATEMENT_BREAKPOINT = '--> statement-breakpoint'
 export const TEST_TEAM_PASSWORD = 'team-password-for-tests'
+export const TEST_APP_URL = 'https://coruja.test'
 
 /** Call at the top of a test file; read `env` inside tests. */
 export function useTestDatabase(): { readonly env: Bindings } {
@@ -20,7 +21,7 @@ export function useTestDatabase(): { readonly env: Bindings } {
   const holder = {
     get env(): Bindings {
       if (!database) throw new Error('The test database is not ready yet')
-      return { DB: database, TEAM_PASSWORD: TEST_TEAM_PASSWORD }
+      return { DB: database, TEAM_PASSWORD: TEST_TEAM_PASSWORD, APP_URL: TEST_APP_URL }
     },
   }
 

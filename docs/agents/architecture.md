@@ -7,8 +7,8 @@ How Coruja is put together and what must stay true. Not a symbol list — for "w
 calendar month, segment validation), the **scheduler**, the **sheet reader and writer** (Banking
 roster out of the CSV export; Office Script and paste grid back into the sheet), the **API** (auth,
 devs, profiles, months: open, edit, confirm, export, import, sheet diff and sync) and the
-**screens** (token entry, month, profile, admin) exist. Months are opened (and the opening undone)
-by hand; there is no cron.
+**screens** (token entry, month, profile, admin) and **ntfy notifications** exist. Months are opened
+(and the opening undone) by hand; the only cron sends shift reminders.
 
 ## Deploy shape
 
@@ -21,6 +21,8 @@ One Cloudflare Worker serves everything:
   the edge (`placement.region`, decisions #29).
 - The web app imports only the **type** `AppType` from the Worker and builds a typed client from it
   (`src/web/api.ts`). No runtime code crosses from `src/worker/` to `src/web/`.
+- A **cron trigger** every minute (`triggers.crons`) runs the Worker's `scheduled` handler, which
+  sends the shift reminders that are due (see "Notifications").
 - Planned: a remote MCP endpoint in the same Worker.
 
 ## Domain
@@ -179,6 +181,30 @@ call `store/` (reads and writes in D1, the domain rules in `src/schedule/` and `
   `POST /months/:month/changes` takes. Import works only while the app has no month at all
   (`not_first_month`).
 
+## Notifications
+
+Through **ntfy** (decisions #32), on a server the admin sets as Worker secrets (`NTFY_URL`,
+`NTFY_TOKEN`); unset, nothing is sent and the profile says so. Each dev's topic is
+`coruja-<nickname>` (accents dropped, `topicOf`), computed from the current nickname, so a renamed
+dev subscribes again; nicknames that would share a topic are refused. Anyone may read a topic; only
+Coruja's token publishes. Messages go out as JSON (`publish`), so Portuguese titles survive.
+
+- **Settings** per dev in `notification_settings`; no row = `DEFAULT_NOTIFICATION_SETTINGS` (eve at
+  18:00 and "my shift changed" on). The profile and the admin edit them; every change saves at once.
+- **Reminders** (eve at a time, the day at a time, when the dev's part of the shift starts): the
+  cron runs every minute, `remindersDue` (`src/schedule/reminders.ts`, pure) lists what is due from
+  yesterday's, today's and tomorrow's shifts, and `sendDueReminders` sends what `sent_reminders`
+  does not have yet. A reminder is claimed (row inserted) before it is sent and released if the send
+  fails, so a skipped or failed minute is caught up by the next run, never twice; one more than 2h
+  late is dropped. São Paulo is taken as UTC−3 (no daylight saving since 2019).
+- **Right away**, after the response (`waitUntil`, so ntfy never slows or fails the request):
+  - an edit or a sheet sync tells each dev whose hours changed on a shift that is not over, except
+    the one who made it ("Sua escala mudou", one notification per dev);
+  - opening or generating a month again tells the other participants who asked for it.
+- `sendDueReminders`, `notifyShiftChanges` and `notifyMonthOpened` (`src/worker/notify/send.ts`)
+  take a database, the time and the server: only the `scheduled` handler and `notifyInBackground`
+  are Cloudflare-specific.
+
 ## Web app
 
 A Svelte 5 SPA in `src/web/`, served by the same Worker as static assets
@@ -190,6 +216,10 @@ save in order and reload only on a failure. The last answer of each screen stays
 (`src/web/cache.svelte.ts`, forgotten on sign-out and when the API refuses the team password): a screen shown again appears at
 once and refreshes; one never loaded shows skeletons (decisions #30).
 
+- **Profile notifications:** a QR code with the `ntfy://` link (opens the Android app subscribed),
+  "Copiar link" with the `https://` topic page, a test button, a help dialog and the reminder
+  switches with their times. The admin sees and edits the same for any dev. Renaming a dev warns
+  that their topic changed.
 - **Sign-in:** the dev pastes their token once; it is checked with `GET /me` and kept in
   `localStorage`. A token the API refuses signs out. Admin screens ask for the team password, check
   it with `GET /team/check` and keep it for the tab; they work without a dev token (the first devs
@@ -221,6 +251,8 @@ Defined in `src/worker/db/schema.ts` (first migration: `migrations/0000_init.sql
 | `confirmations` | per month and dev; composite FK to `month_participants` |
 | `balance_adjustments` | hours added to a balance outside shifts (`joined`, `import`) |
 | `change_log` | every roster change (and generate, regenerate, confirm, export, import), `before`/`after` as JSON |
+| `notification_settings` | per dev: which reminders (eve, day, shift start; times `HH:MM`) and events they want; no row = defaults |
+| `sent_reminders` | shift reminders already sent (dev, shift date, kind, segment start), pruned after a week |
 
 **Not stored, always computed:** hours per dev per month (from segments, by calendar hour),
 balances (`Σ (actual − expected share) + adjustments`), "ready for export" (all participants

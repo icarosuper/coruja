@@ -13,18 +13,21 @@
   import { links } from '../router.svelte'
   import { session } from '../session.svelte'
   import AbsenceCalendar from './AbsenceCalendar.svelte'
+  import NotificationsSection from './NotificationsSection.svelte'
+  import type { NotificationSettings, NotificationView } from './types'
 
   type Props = { devId?: number }
   let { devId }: Props = $props()
 
   const isAdminEdit = $derived(devId !== undefined)
   type Profile = Awaited<ReturnType<typeof loadProfile>>
-  type ProfileAnswers = { profile: Profile; balance: number | null }
+  type ProfileAnswers = { profile: Profile; balance: number | null; notifications: NotificationView }
   // App re-creates the page for each dev ({#key}), so `devId` never changes under it.
   const cacheKey = untrack(() => (devId === undefined ? 'profile:me' : `profile:${devId}`))
   const remembered = cached<ProfileAnswers>(cacheKey)
   let profile = $state<Profile | null>(remembered?.profile ?? null)
   let balance = $state<number | null>(remembered?.balance ?? null)
+  let notifications = $state<NotificationView | null>(remembered?.notifications ?? null)
   let nickname = $state(remembered?.profile.dev.nickname ?? '')
 
   function loadProfile() {
@@ -33,19 +36,27 @@
       : call(api.api.devs[':id'].profile.$get({ param: { id: String(devId) } }, asTeam()))
   }
 
+  function loadNotifications() {
+    return devId === undefined
+      ? call(api.api.me.notifications.$get())
+      : call(api.api.devs[':id'].notifications.$get({ param: { id: String(devId) } }, asTeam()))
+  }
+
   async function load() {
-    const [loaded, devs] = await Promise.all([
+    const [loaded, devs, loadedNotifications] = await Promise.all([
       loadProfile(),
       call(isAdminEdit ? api.api.devs.$get({}, asTeam()) : api.api.devs.$get()),
+      loadNotifications(),
     ])
     profile = loaded
     nickname = loaded.dev.nickname
     balance = devs.find((dev) => dev.id === loaded.dev.id)?.balance ?? null
+    notifications = loadedNotifications
     rememberProfile()
   }
 
   function rememberProfile() {
-    if (profile) remember<ProfileAnswers>(cacheKey, { profile, balance })
+    if (profile && notifications) remember<ProfileAnswers>(cacheKey, { profile, balance, notifications })
   }
 
   async function act(action: () => Promise<unknown>) {
@@ -120,12 +131,49 @@
     )
   }
 
-  function saveNickname() {
+  async function saveNickname() {
     const typed = nickname.trim()
     if (!profile || devId === undefined || typed === profile.dev.nickname || typed === '') return
-    act(() =>
+    const topicBefore = notifications?.subscription?.topic
+    await act(() =>
       call(api.api.devs[':id'].$patch({ param: { id: String(devId) }, json: { nickname: typed } }, asTeam())),
     )
+    // The topic follows the nickname (decisions #32): whoever subscribed to the old one stops hearing.
+    const topicAfter = notifications?.subscription?.topic
+    const isTopicChanged = topicBefore !== undefined && topicAfter !== undefined && topicBefore !== topicAfter
+    if (isTopicChanged) {
+      toast.warning(
+        `O tópico de notificações agora é ${topicAfter}. ${typed} precisa assiná-lo de novo no ntfy.`,
+      )
+    }
+  }
+
+  /** Shows the change at once and saves in order, like the rules. */
+  function saveNotificationSettings(settings: NotificationSettings) {
+    if (!notifications) return
+    notifications.settings = settings
+    rememberProfile()
+    saveInOrder(() =>
+      devId === undefined
+        ? call(api.api.me.notifications.$put({ json: settings }))
+        : call(
+            api.api.devs[':id'].notifications.$put(
+              { param: { id: String(devId) }, json: settings },
+              asTeam(),
+            ),
+          ),
+    )
+  }
+
+  async function sendTestNotification() {
+    try {
+      await (devId === undefined
+        ? call(api.api.me.notifications.test.$post())
+        : call(api.api.devs[':id'].notifications.test.$post({ param: { id: String(devId) } }, asTeam())))
+      toast.success('Notificação de teste enviada. Confira o celular.')
+    } catch (failure) {
+      toast.error((failure as Error).message)
+    }
   }
 
   /** Shows the change at once, like the rules; the API keeps the periods merged the same way. */
@@ -160,7 +208,7 @@
 
 {#if !canLoad}
   <AdminUnlock />
-{:else if profile === null}
+{:else if profile === null || notifications === null}
   <div class="mx-auto max-w-5xl space-y-8" role="status" aria-busy="true" aria-label="Carregando o perfil">
     <Skeleton class="h-8 w-64" />
     <div class="space-y-2">
@@ -267,5 +315,13 @@
         onChange={setAbsenceDays}
       />
     </section>
+
+    {#if notifications}
+      <NotificationsSection
+        {notifications}
+        onChange={saveNotificationSettings}
+        onTest={sendTestNotification}
+      />
+    {/if}
   </div>
 {/if}

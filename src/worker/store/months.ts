@@ -40,6 +40,8 @@ export type ExportFormat = (typeof EXPORT_FORMATS)[number]
 
 export type DayChange = { date: IsoDate; kind: DayKind; segments: Segment<number>[] }
 type LoggedDay = { kind: DayKind; segments: Segment<number>[] }
+/** A day an edit changed, as it is after the edit, with the devs whose hours on it changed. */
+export type ChangedDay = LoggedDay & { date: IsoDate; devIds: number[] }
 
 export async function listMonths(database: Database) {
   const rows = await database
@@ -68,7 +70,7 @@ async function ensureMonthCanBeAdded(database: Database, monthId: MonthId): Prom
  * Opens a month with a suggested roster (decisions #7): every active dev with a weight above 0
  * takes part, with the weight frozen now; holidays come from the São Paulo calendar (#14).
  */
-export async function openMonth(database: Database, monthId: MonthId, actorDevId: number) {
+export async function openMonth(database: Database, monthId: MonthId, actorDevId: number): Promise<number[]> {
   await ensureMonthCanBeAdded(database, monthId)
   const calendar = defaultCalendar(monthId)
   const { participants, suggestion } = await suggestMonth(database, monthId, calendar)
@@ -99,6 +101,7 @@ export async function openMonth(database: Database, monthId: MonthId, actorDevId
       createdAt: now,
     }),
   ])
+  return participants.map((dev) => dev.id)
 }
 
 /**
@@ -106,7 +109,11 @@ export async function openMonth(database: Database, monthId: MonthId, actorDevId
  * active devs as they are now, keeping each day's kind (decisions #28). Only before the first
  * export and while no later month exists: both read this month's hours. Every confirmation goes.
  */
-export async function regenerateMonth(database: Database, monthId: MonthId, actorDevId: number) {
+export async function regenerateMonth(
+  database: Database,
+  monthId: MonthId,
+  actorDevId: number,
+): Promise<number[]> {
   const month = await findMonth(database, monthId)
   const isExported = month.exportedAt !== null
   if (isExported) throw new ApiError(409, 'month_exported')
@@ -150,6 +157,7 @@ export async function regenerateMonth(database: Database, monthId: MonthId, acto
       createdAt: now,
     }),
   ])
+  return participants.map((dev) => dev.id)
 }
 
 /**
@@ -412,7 +420,7 @@ export async function applyDayChanges(
   const currentDays = await loadShiftDaysOn(database, dates)
   const statements: BatchItem<'sqlite'>[] = []
   const devsToReconfirm = new Set<number>()
-  const changedDates: IsoDate[] = []
+  const changedDays: ChangedDay[] = []
   const now = new Date()
 
   for (const change of changes) {
@@ -425,7 +433,12 @@ export async function applyDayChanges(
     const isUnchanged = !isKindChanged && changedDevs.size === 0
     if (isUnchanged) continue
 
-    changedDates.push(change.date)
+    changedDays.push({
+      date: change.date,
+      kind: after.kind,
+      segments: after.segments,
+      devIds: [...changedDevs],
+    })
     for (const devId of changedDevs) devsToReconfirm.add(devId)
     statements.push(
       database.update(days).set({ kind: after.kind }).where(eq(days.date, change.date)),
@@ -457,7 +470,12 @@ export async function applyDayChanges(
     )
   }
   await runBatch(database, statements)
-  return { changedDates, devsToReconfirm: isExported ? [] : [...devsToReconfirm].sort((a, b) => a - b) }
+  return {
+    changedDates: changedDays.map((day) => day.date),
+    devsToReconfirm: isExported ? [] : [...devsToReconfirm].sort((a, b) => a - b),
+    /** For the notifications (decisions #32); not part of the API's answer. */
+    changedDays,
+  }
 }
 
 export function sortedSegments(segments: Segment<number>[]): Segment<number>[] {

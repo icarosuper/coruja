@@ -1,11 +1,15 @@
-import { Hono } from 'hono'
+import { type Context, Hono } from 'hono'
 import { z } from 'zod'
 import { saoPauloDate } from '../../schedule/calendar'
+import type { MonthId } from '../../schedule/dates'
 import type { AppEnv } from '../app-env'
 import { requireDev } from '../auth'
 import { createDatabase } from '../db/client'
+import { notifyInBackground } from '../notify/background'
+import { notifyMonthOpened, notifyShiftChanges } from '../notify/send'
 import {
   applyDayChanges,
+  type ChangedDay,
   closeMonth,
   confirmMonth,
   EXPORT_FORMATS,
@@ -21,6 +25,13 @@ import { importMonth, sheetDifferences } from '../store/sheet'
 import { csvSchema, dateSchema, dayContentSchema, monthIdSchema, validate } from '../validation'
 
 const monthParam = z.object({ month: monthIdSchema })
+
+function notifyChangedShifts(context: Context<AppEnv>, month: MonthId, changedDays: ChangedDay[]) {
+  const actor = context.var.dev
+  notifyInBackground(context, (notify) =>
+    notifyShiftChanges(notify, { month, changedDays, actor, now: new Date() }),
+  )
+}
 const MAX_DAYS_IN_MONTH = 31
 
 export const monthRoutes = new Hono<AppEnv>()
@@ -44,7 +55,11 @@ export const monthRoutes = new Hono<AppEnv>()
   .post('/:month/open', requireDev, validate('param', monthParam), async (context) => {
     const database = createDatabase(context.env.DB)
     const { month } = context.req.valid('param')
-    await openMonth(database, month, context.var.dev.id)
+    const participantIds = await openMonth(database, month, context.var.dev.id)
+    const actor = context.var.dev
+    notifyInBackground(context, (notify) =>
+      notifyMonthOpened(notify, { month, participantIds, actor, isRegenerated: false }),
+    )
     return context.json(await monthView(database, month), 201)
   })
   /** Undoes the opening of a month that has not started, exported or not (decisions #31). */
@@ -59,7 +74,11 @@ export const monthRoutes = new Hono<AppEnv>()
   .post('/:month/regenerate', requireDev, validate('param', monthParam), async (context) => {
     const database = createDatabase(context.env.DB)
     const { month } = context.req.valid('param')
-    await regenerateMonth(database, month, context.var.dev.id)
+    const participantIds = await regenerateMonth(database, month, context.var.dev.id)
+    const actor = context.var.dev
+    notifyInBackground(context, (notify) =>
+      notifyMonthOpened(notify, { month, participantIds, actor, isRegenerated: true }),
+    )
     return context.json(await monthView(database, month))
   })
   .get('/:month/log', requireDev, validate('param', monthParam), async (context) => {
@@ -73,13 +92,14 @@ export const monthRoutes = new Hono<AppEnv>()
     async (context) => {
       const { month, date } = context.req.valid('param')
       const change = { date, ...context.req.valid('json') }
-      const applied = await applyDayChanges(
+      const { changedDays, ...applied } = await applyDayChanges(
         createDatabase(context.env.DB),
         month,
         [change],
         context.var.dev.id,
         'edit',
       )
+      notifyChangedShifts(context, month, changedDays)
       return context.json(applied)
     },
   )
@@ -98,13 +118,15 @@ export const monthRoutes = new Hono<AppEnv>()
       }),
     ),
     async (context) => {
-      const applied = await applyDayChanges(
+      const { month } = context.req.valid('param')
+      const { changedDays, ...applied } = await applyDayChanges(
         createDatabase(context.env.DB),
-        context.req.valid('param').month,
+        month,
         context.req.valid('json').changes,
         context.var.dev.id,
         'sync',
       )
+      notifyChangedShifts(context, month, changedDays)
       return context.json(applied)
     },
   )

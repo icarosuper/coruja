@@ -39,6 +39,7 @@ never renumber.
 - [**#29** — The Worker runs next to D1, not next to the user](#29-the-worker-runs-next-to-d1-not-next-to-the-user)
 - [**#30** — Screens hide the round trip: one wave, the last answer in memory, skeletons](#30-screens-hide-the-round-trip-one-wave-the-last-answer-in-memory-skeletons)
 - [**#31** — Closing a month undoes its opening](#31-closing-a-month-undoes-its-opening)
+- [**#32** — Notifications go through ntfy, sent by a cron every minute](#32-notifications-go-through-ntfy-sent-by-a-cron-every-minute)
 - [**#33** — PR previews are Worker Previews on a shared staging database](#33-pr-previews-are-worker-previews-on-a-shared-staging-database)
 
 ---
@@ -183,9 +184,8 @@ The company runs Microsoft 365 and the user wants nothing that needs Teams/Azure
 
 - **Excel:** Office Script (#4).
 - **Outlook:** a per-dev `.ics` feed, added via "Add calendar → Subscribe from web".
-- **Teams (pending confirmation):** channel notifications through a Workflows webhook ("Post to a
-  channel when a webhook request is received"), created by any channel member. One-way only, and
-  messages name devs in plain text (no @mentions, which would need emails).
+- **Teams:** dropped. Notifications go to each dev's phone through ntfy (#32) instead of a channel
+  webhook.
 - **Claude Code:** a remote MCP server in the Worker, authenticated with the dev token (#3).
 
 **Don't "fix" by:** using Microsoft Graph or a Teams bot registration.
@@ -495,6 +495,34 @@ nothing is kept.
 - **Any dev,** like opening and generating again (#28).
 
 **Don't "fix" by:** keeping a "closed" flag on the row, or refusing it after the export.
+
+### 32. Notifications go through ntfy, sent by a cron every minute
+
+Each dev hears about their own shifts on their phone through **ntfy**, on a server the admin
+configures as Worker secrets (`NTFY_URL`, `NTFY_TOKEN`): the code never names a server. The team
+already runs one; the devs install the app and subscribe once.
+
+- **Topic = `coruja-<nickname>`**, from the current nickname. The roster is not secret (everyone
+  sees it on the sheet), and a name is easy to type into the app; a random topic was considered
+  and dropped. Renaming a dev changes the topic: the admin screen warns, the dev subscribes again.
+  Anyone may read a topic; only Coruja's token, write-only on `coruja-*`, publishes.
+- **No setup per dev:** ntfy creates a topic on first publish, and every dev starts with defaults
+  (eve at 18:00, "my shift changed"). No "turn on", "turn off" or "new topic" buttons: to stop, a
+  dev turns the switches off or unsubscribes in the app.
+- **A cron every minute** checks what is due and sends it. Each dev picks any minute, and a run
+  that fails or is skipped is caught up by the next (`sent_reminders`, up to 2h late), never twice.
+  The cost is a few light D1 reads per minute, far under the free plan. This is not the automatic
+  month opening dropped in #7: the cron opens nothing.
+- **ntfy's scheduled delivery was not used**: a message scheduled when the month is exported would
+  go to the wrong dev after a swap; the cron reads the roster as it is at that minute.
+- **The QR code holds `ntfy://host/topic`**, which opens the Android app already subscribed. ntfy
+  has no store fallback and no `https://` deep link; iOS adds the topic by hand (help dialog).
+- **Web Push was considered** (no app to install) and left for later: service worker, PWA manifest
+  for iOS, VAPID keys, one subscription per device and payload encryption in the Worker. It would be
+  another way to send, reusing who gets what and when.
+
+**Don't "fix" by:** hard-coding the server, generating random topics, scheduling reminders in ntfy
+at export time, or making the cron open months.
 
 ### 33. PR previews are Worker Previews on a shared staging database
 

@@ -61,3 +61,17 @@ export const absenceDaysBodySchema = z
     message: `at most ${MAX_ABSENCE_DAYS} days at once`,
     path: ['toDate'],
   })
+
+/** `HH:MM`, 00:00 to 23:59. */
+export const clockTimeSchema = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'expected HH:MM')
+
+/** Every setting at once, like the profile's rules (decisions #32). */
+export const notificationSettingsSchema = z.object({
+  eveEnabled: z.boolean(),
+  eveTime: clockTimeSchema,
+  dayEnabled: z.boolean(),
+  dayTime: clockTimeSchema,
+  shiftStartEnabled: z.boolean(),
+  shiftChangedEnabled: z.boolean(),
+  monthOpenedEnabled: z.boolean(),
+})

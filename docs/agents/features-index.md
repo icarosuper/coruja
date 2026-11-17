@@ -20,6 +20,9 @@ Feature → files. Update in the same change that adds, moves or removes somethi
 | Input validation (zod) | `validate` + shared schemas — `src/worker/validation.ts` |
 | PR previews' database: migrate, reset with a made-up team | `bun run db:migrate:staging`, `bun run staging:seed` — `scripts/seed-staging.ts`, `wrangler.staging.jsonc` |
 | São Paulo date, default month | `saoPauloDate`, `defaultMonth` — `src/schedule/calendar.ts` |
+| Shift reminders due (eve, day, shift start) | `remindersDue` — `src/schedule/reminders.ts` |
+| Notifications through ntfy: topic, publish, who gets what | `src/worker/notify/` — `ntfy.ts` (`topicOf`, `publish`), `send.ts` (`sendDueReminders`, `notifyShiftChanges`, `notifyMonthOpened`), `messages.ts` (texts) |
+| Cron trigger (every minute) | `scheduled` — `src/worker/index.ts`; `triggers.crons` in `wrangler.jsonc` |
 
 ### API routes
 
@@ -37,6 +40,9 @@ Under `/api`. 🔑 = dev token, 🛡️ = team password.
 | `PUT /me/rules` 🔑 | replace own rules | `replaceRules` |
 | `PUT /me/absences` 🔑 | mark or clear every day of a range as one the dev can't take; answers the merged periods | `setAbsenceDays` |
 | `GET /devs/:id/profile`, `PUT /devs/:id/rules`, `PUT /devs/:id/absences` 🛡️ | someone else's profile, edited by an admin | `routes/devs.ts` → `store/profile.ts` |
+| `GET /me/notifications`, `PUT /me/notifications` 🔑 | own ntfy topic and links (null when ntfy is not configured), and what to be told about (#32) | `routes/me.ts` → `notify/profile.ts` `notificationView`, `store/notifications.ts` `saveNotificationSettings` |
+| `POST /me/notifications/test` 🔑 | send a test notification | `sendTestNotification` |
+| `GET`/`PUT /devs/:id/notifications`, `POST /devs/:id/notifications/test` 🛡️ | the same for someone else, as admin | `routes/devs.ts` |
 | `GET /months` 🔑 | months and when each was last exported | `routes/months.ts` → `store/months.ts` `listMonths` |
 | `POST /months/:month/open` 🔑 | open with a suggested roster, any time (#7) | `openMonth` |
 | `DELETE /months/:month` 🔑 | close: undo the opening of the newest month, not started yet, exported or not (#31) | `closeMonth` |
@@ -64,6 +70,7 @@ Svelte, in `src/web/`. Shell, header and nav: `App.svelte`; routes: `router.svel
 | Day editor (who, split, 15h/24h, preferences per dev) | | `month/DayEditor.svelte` |
 | Hours and balance, change log | | `month/MonthSidePanel.svelte` |
 | Profile: weight, weekday rules, days I can't (tap or drag on two months side by side, one on phones; warning on months with a roster) | `#/perfil` | `profile/ProfilePage.svelte`, `AbsenceCalendar.svelte` |
+| Profile: notifications (QR code to subscribe, copy link, test, help dialog, reminder times and events) | | `profile/NotificationsSection.svelte` |
 | Admin: devs, tokens, sheet diff / sync | `#/admin` | `admin/AdminPage.svelte`, `AdminUnlock.svelte` |
 | Someone else's profile, as admin | `#/admin/dev/:id` | `profile/ProfilePage.svelte` with `devId` |
 | `.xlsx` of the paste grid | | `src/web/xlsx.ts` |

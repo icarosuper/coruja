@@ -22,6 +22,9 @@
   // Runs /api/* next to the D1 primary (ENAM, Northern Virginia): one long hop per request instead of
   // one per query. Static assets are still served from the edge (decisions #29).
   "placement": { "region": "aws:us-east-1" },
+  "vars": { "APP_URL": "https://coruja.verme.net" },
+  // Shift reminders: every minute, the Worker sends whatever reminder is due (decisions #32).
+  "triggers": { "crons": ["* * * * *"] },
   // PR previews (decisions #33): every branch but master gets <branch>-coruja.<subdomain>.workers.dev
   // through Workers Builds' `wrangler preview`. Previews inherit nothing from production: they get the
   // staging database below, their own TEAM_PASSWORD (Preview base config) and no NTFY_* secrets, so
@@ -40,7 +43,8 @@
     "placement": { "region": "aws:us-east-1" },
     "observability": { "enabled": true }
   },
-  // TEAM_PASSWORD is a secret: `.dev.vars` locally, `wrangler secret put TEAM_PASSWORD` in production.
+  // Secrets: `.dev.vars` locally, `wrangler secret put <NAME>` in production. TEAM_PASSWORD, and
+  // NTFY_URL + NTFY_TOKEN for notifications (both optional: unset = no notifications).
   "observability": {
     "enabled": true
   }

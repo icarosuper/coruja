@@ -3,6 +3,7 @@ import { generateToken, hashToken } from '../auth'
 import type { Database } from '../db/client'
 import { balanceAdjustments, devs } from '../db/schema'
 import { ApiError } from '../errors'
+import { topicOf } from '../notify/ntfy'
 import { balancesBefore } from './balances'
 
 /** Nicknames match the sheet's cells ignoring case, accents' encoding form and surrounding spaces. */
@@ -102,10 +103,18 @@ async function findDev(database: Database, devId: number) {
   return dev
 }
 
+/**
+ * Two nicknames that differ only in case or accents ("Órion", "orion") would share a notification
+ * topic (decisions #32), so they count as the same.
+ */
 async function ensureNicknameIsFree(database: Database, nickname: string, ownDevId: number | null) {
   const allDevs = await database.select({ id: devs.id, nickname: devs.nickname }).from(devs)
   const wanted = normalizeNickname(nickname)
-  const isTaken = allDevs.some((dev) => dev.id !== ownDevId && normalizeNickname(dev.nickname) === wanted)
+  const wantedTopic = topicOf({ id: ownDevId ?? 0, nickname })
+  const isTaken = allDevs.some(
+    (dev) =>
+      dev.id !== ownDevId && (normalizeNickname(dev.nickname) === wanted || topicOf(dev) === wantedTopic),
+  )
   if (isTaken) throw new ApiError(409, 'nickname_taken')
 }
 
