@@ -3,12 +3,16 @@ import { z } from 'zod'
 import type { AppEnv } from '../app-env'
 import { requireDevOrTeamPassword, requireTeamPassword } from '../auth'
 import { createDatabase } from '../db/client'
+import { ntfyConfigOf } from '../notify/ntfy'
+import { notificationView, sendTestNotification } from '../notify/profile'
 import { createDev, issueToken, listDevs, setWeight, updateDev } from '../store/devs'
+import { saveNotificationSettings } from '../store/notifications'
 import { loadProfile, replaceRules, setAbsenceDays } from '../store/profile'
 import {
   absenceDaysBodySchema,
   idSchema,
   nicknameSchema,
+  notificationSettingsSchema,
   rulesBodySchema,
   validate,
   weightSchema,
@@ -89,3 +93,26 @@ export const devRoutes = new Hono<AppEnv>()
       return context.json(await setAbsenceDays(database, id, context.req.valid('json')))
     },
   )
+  .get('/:id/notifications', requireTeamPassword, validate('param', idParam), async (context) => {
+    const database = createDatabase(context.env.DB)
+    const { id } = context.req.valid('param')
+    return context.json(await notificationView(database, ntfyConfigOf(context.env), id))
+  })
+  .put(
+    '/:id/notifications',
+    requireTeamPassword,
+    validate('param', idParam),
+    validate('json', notificationSettingsSchema),
+    async (context) => {
+      const database = createDatabase(context.env.DB)
+      const { id } = context.req.valid('param')
+      await loadProfile(database, id)
+      await saveNotificationSettings(database, id, context.req.valid('json'))
+      return context.json({ ok: true })
+    },
+  )
+  .post('/:id/notifications/test', requireTeamPassword, validate('param', idParam), async (context) => {
+    const database = createDatabase(context.env.DB)
+    await sendTestNotification(database, ntfyConfigOf(context.env), context.req.valid('param').id)
+    return context.json({ ok: true })
+  })

@@ -9,7 +9,7 @@
 
 ```bash
 bun install
-cp .dev.vars.example .dev.vars   # local secrets: TEAM_PASSWORD
+cp .dev.vars.example .dev.vars   # local secrets: TEAM_PASSWORD; optional APP_URL, NTFY_URL, NTFY_TOKEN
 bun run cf-typegen          # generates worker-configuration.d.ts (gitignored)
 bun run db:migrate:local
 bun run dev                 # http://localhost:5173 — /api/* goes to the Worker
@@ -23,6 +23,17 @@ Open http://localhost:5173, go to **Admin** (link on the sign-in screen), unlock
 `TEAM_PASSWORD` from `.dev.vars`, add a few devs and copy one token. Sign in with it: the month
 screen offers to open the current month with a suggested roster. To start from the real sheet,
 import its CSV on that same empty month screen instead (decisions #16).
+
+### Notifications (ntfy)
+
+Off unless `.dev.vars` has `NTFY_URL` (and `NTFY_TOKEN` if the server needs it): the profile then
+shows the QR code and the test button, and the Worker publishes to that server (decisions #32). Set
+`APP_URL=http://localhost:5173` so the links in notifications open the local app. The cron that
+sends shift reminders does not run by itself in `bun run dev`; fire it by hand:
+
+```bash
+curl "http://localhost:5173/cdn-cgi/handler/scheduled?cron=*+*+*+*+*"
+```
 
 ### Using the API by hand
 
@@ -71,6 +82,27 @@ bun run db:migrate:remote
 bunx wrangler secret put TEAM_PASSWORD   # the team password (decisions #3)
 bun run deploy
 ```
+
+### Notifications (ntfy)
+
+Optional, and done once for every dev (decisions #32). On the ntfy server, with anonymous read
+allowed, give Coruja a user that may only publish to its topics and a token:
+
+```bash
+ntfy user add coruja
+ntfy access coruja 'coruja-*' write-only
+ntfy token add coruja
+```
+
+Then, on Cloudflare (the server must be reachable over HTTPS from the internet):
+
+```bash
+bunx wrangler secret put NTFY_URL     # e.g. https://ntfy.example.com
+bunx wrangler secret put NTFY_TOKEN   # the token above
+```
+
+Topics need no setup: each dev's (`coruja-<nickname>`) exists as soon as something is published to
+it. Without `NTFY_URL`, nothing is sent and the profile says notifications are not configured.
 
 The custom domain is the `routes` entry in `wrangler.jsonc` (its zone must be on the same
 Cloudflare account); the deploy creates its DNS record and certificate.

@@ -43,6 +43,13 @@
       "when": 1794538288312,
       "tag": "0005_weekday-rules-only",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1794873254964,
+      "tag": "0006_notification-settings",
+      "breakpoints": true
     }
   ]
 }

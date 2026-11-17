@@ -11,7 +11,8 @@ src/
     bindings.ts  Worker bindings as a module type (see below); app-env.ts adds the request variables
     auth.ts      token and team password middlewares; errors.ts ApiError; validation.ts zod schemas
     routes/      one sub-app per resource (devs, me, months): HTTP only, no queries
-    store/       reads and writes in D1 per area (devs, profile, months, sheet, balances)
+    store/       reads and writes in D1 per area (devs, profile, months, sheet, balances, notifications)
+    notify/      ntfy notifications: the server client, the texts, who gets what (decisions #32)
     testing/     test-only helpers: useTestDatabase (Miniflare D1), typed test client
     db/          Drizzle: schema.ts (tables), client.ts (createDatabase)
   web/           Svelte 5 SPA. Entry: main.ts → App.svelte (header, nav, routes). api.ts: typed client
@@ -21,7 +22,8 @@ src/
   schedule/      Domain rules as pure functions — no D1, no Hono, no Date.now() inside.
                  dates.ts (YYYY-MM-DD helpers, UTC), holidays.ts, shifts.ts (day kinds, hours by
                  calendar month, segment validation), preferences.ts (profile rules → preference
-                 per date), scheduler.ts (suggestRoster), balance.ts (a month's hours vs share).
+                 per date), scheduler.ts (suggestRoster), balance.ts (a month's hours vs share),
+                 reminders.ts (which shift reminders are due).
   sheet/         The manager's Excel sheet: csv.ts (CSV reader), roster.ts (Banking roster out of
                  the exported sheet), export.ts (Office Script and paste grid back into it),
                  testing/ (builds sheets in tests). Pure too.

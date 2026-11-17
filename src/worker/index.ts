@@ -1,7 +1,12 @@
+import type { ExecutionContext, ScheduledController } from '@cloudflare/workers-types'
 import { Hono } from 'hono'
 import type { AppEnv } from './app-env'
 import { requireTeamPassword } from './auth'
+import type { Bindings } from './bindings'
+import { createDatabase } from './db/client'
 import { ApiError } from './errors'
+import { ntfyConfigOf } from './notify/ntfy'
+import { sendDueReminders } from './notify/send'
 import { devRoutes } from './routes/devs'
 import { meRoutes } from './routes/me'
 import { monthRoutes } from './routes/months'
@@ -28,4 +33,15 @@ export type AppType = typeof app
 
 export { app }
 
-export default app
+/**
+ * The cron trigger (every minute, wrangler.jsonc): sends the shift reminders that are due
+ * (decisions #32). The only Cloudflare-specific part; `sendDueReminders` takes plain arguments.
+ */
+async function scheduled(controller: ScheduledController, env: Bindings, context: ExecutionContext) {
+  const ntfy = ntfyConfigOf(env)
+  if (!ntfy) return
+  const notify = { database: createDatabase(env.DB), ntfy, appUrl: env.APP_URL }
+  context.waitUntil(sendDueReminders(notify, new Date(controller.scheduledTime)))
+}
+
+export default { fetch: app.fetch, scheduled }

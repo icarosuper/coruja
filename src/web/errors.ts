@@ -53,7 +53,11 @@ export function messageOf(code: string, details: Record<string, unknown>): strin
     case 'repeated_date':
       return 'Um dos dias não é desse mês.'
     case 'nickname_taken':
-      return 'Já existe um dev com esse apelido.'
+      return 'Já existe um dev com esse apelido (ou um igual sem acentos).'
+    case 'ntfy_not_configured':
+      return 'As notificações não foram configuradas no servidor.'
+    case 'ntfy_failed':
+      return 'O servidor ntfy não aceitou a notificação. Tente de novo mais tarde.'
     case 'dev_not_found':
       return 'Esse dev não existe.'
     case 'absence_not_found':

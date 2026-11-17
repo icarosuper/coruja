@@ -10,12 +10,13 @@ import {
   text,
 } from 'drizzle-orm/sqlite-core'
 import { PREFERENCE_RULE_KINDS, PREFERENCES } from '../../schedule/preferences'
+import { REMINDER_KINDS } from '../../schedule/reminders'
 import { DAY_KINDS } from '../../schedule/shifts'
 
 // Data model: docs/agents/architecture.md ("Domain") and decisions #2, #5, #7, #16, #18–#22.
 // Derived values are NOT stored: hours per dev, balances and "ready for export" are computed.
 
-export { DAY_KINDS, PREFERENCE_RULE_KINDS, PREFERENCES }
+export { DAY_KINDS, PREFERENCE_RULE_KINDS, PREFERENCES, REMINDER_KINDS }
 export const BALANCE_ADJUSTMENT_REASONS = ['joined', 'import'] as const
 export const CHANGE_LOG_ACTIONS = [
   'generate',
@@ -231,4 +232,72 @@ export const changeLog = sqliteTable(
     createdAt: createdAt(),
   },
   (table) => [index('change_log_month_id_idx').on(table.monthId)],
+)
+
+/** What a dev gets without ever opening the profile (decisions #32). */
+export const DEFAULT_NOTIFICATION_SETTINGS = {
+  eveEnabled: true,
+  eveTime: '18:00',
+  dayEnabled: false,
+  dayTime: '09:00',
+  shiftStartEnabled: false,
+  shiftChangedEnabled: true,
+  monthOpenedEnabled: false,
+}
+const defaults = DEFAULT_NOTIFICATION_SETTINGS
+
+const isClockTime = (column: unknown) => sql`${column} GLOB '[0-2][0-9]:[0-5][0-9]' AND ${column} <= '23:59'`
+
+/**
+ * What a dev wants to hear about through ntfy (decisions #32). No row = `DEFAULT_NOTIFICATION_SETTINGS`. Times are `HH:MM` in São Paulo.
+ */
+export const notificationSettings = sqliteTable(
+  'notification_settings',
+  {
+    devId: integer('dev_id')
+      .primaryKey()
+      .references(() => devs.id),
+    eveEnabled: integer('eve_enabled', { mode: 'boolean' }).notNull().default(defaults.eveEnabled),
+    eveTime: text('eve_time').notNull().default(defaults.eveTime),
+    dayEnabled: integer('day_enabled', { mode: 'boolean' }).notNull().default(defaults.dayEnabled),
+    dayTime: text('day_time').notNull().default(defaults.dayTime),
+    shiftStartEnabled: integer('shift_start_enabled', { mode: 'boolean' })
+      .notNull()
+      .default(defaults.shiftStartEnabled),
+    shiftChangedEnabled: integer('shift_changed_enabled', { mode: 'boolean' })
+      .notNull()
+      .default(defaults.shiftChangedEnabled),
+    monthOpenedEnabled: integer('month_opened_enabled', { mode: 'boolean' })
+      .notNull()
+      .default(defaults.monthOpenedEnabled),
+  },
+  (table) => [
+    check('notification_settings_eve_time_valid', isClockTime(table.eveTime)),
+    check('notification_settings_day_time_valid', isClockTime(table.dayTime)),
+  ],
+)
+
+/**
+ * Shift reminders already sent, so a minute the cron skips is caught up by the next run and none
+ * goes out twice. `from_hour` tells apart the starts of a split shift; it is 0 for the others.
+ * Rows older than a week are pruned.
+ */
+export const sentReminders = sqliteTable(
+  'sent_reminders',
+  {
+    devId: integer('dev_id')
+      .notNull()
+      .references(() => devs.id),
+    /** The shift's day (`YYYY-MM-DD`), not the day the reminder went out. */
+    date: text('date').notNull(),
+    kind: text('kind', { enum: REMINDER_KINDS }).notNull(),
+    fromHour: integer('from_hour').notNull(),
+    sentAt: integer('sent_at', { mode: 'timestamp_ms' })
+      .notNull()
+      .$defaultFn(() => new Date()),
+  },
+  (table) => [
+    primaryKey({ columns: [table.devId, table.date, table.kind, table.fromHour] }),
+    check('sent_reminders_kind_valid', sql`${table.kind} IN ('eve', 'day', 'shift_start')`),
+  ],
 )

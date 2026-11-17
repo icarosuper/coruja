@@ -7,4 +7,10 @@ export type Bindings = {
   DB: D1Database
   /** Guards admin actions (decisions #3). Local dev reads it from `.dev.vars`. */
   TEAM_PASSWORD: string
+  /** Where the web app lives; notifications link to it. A var in wrangler.jsonc. */
+  APP_URL: string
+  /** The ntfy server notifications go to (decisions #32). Secret; unset = no notifications. */
+  NTFY_URL?: string
+  /** Access token with write access to `coruja-*` on that server. Secret. */
+  NTFY_TOKEN?: string
 }

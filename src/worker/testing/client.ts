@@ -1,3 +1,4 @@
+import type { ExecutionContext } from 'hono'
 import { testClient } from 'hono/testing'
 import { TEAM_PASSWORD_HEADER } from '../auth'
 import type { Bindings } from '../bindings'
@@ -6,8 +7,9 @@ import { TEST_TEAM_PASSWORD } from './env'
 
 // Test-only: the typed client (same types as the web app) bound to a test env.
 
-export function clientFor(env: Bindings) {
-  return testClient(app, env)
+/** `executionCtx` collects what a route sends in the background (notifications). */
+export function clientFor(env: Bindings, executionCtx?: ExecutionContext) {
+  return testClient(app, env, executionCtx)
 }
 
 export const asTeam = { headers: { [TEAM_PASSWORD_HEADER]: TEST_TEAM_PASSWORD } }

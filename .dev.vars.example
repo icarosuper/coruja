@@ -1,1 +1,6 @@
 TEAM_PASSWORD=change-me
+# Links in notifications point here instead of production.
+APP_URL=http://localhost:5173
+# Optional: notifications through ntfy (decisions #32).
+# NTFY_URL=https://ntfy.example.com
+# NTFY_TOKEN=tk_...
