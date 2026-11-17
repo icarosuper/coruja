@@ -27,8 +27,9 @@
   "triggers": { "crons": ["* * * * *"] },
   // PR previews (decisions #33): every branch but master gets <branch>-coruja.<subdomain>.workers.dev
   // through Workers Builds' `wrangler preview`. Previews inherit nothing from production: they get the
-  // staging database below, their own TEAM_PASSWORD (Preview base config) and no NTFY_* secrets, so
-  // they never notify anyone. Cron triggers do not run on previews.
+  // staging database below and, in the Preview base config, their own TEAM_PASSWORD and a NTFY_URL that
+  // never resolves (https://ntfy.invalid), so the profile shows notifications but nobody is notified.
+  // Cron triggers do not run on previews.
   "preview_urls": true,
   "previews": {
     "d1_databases": [

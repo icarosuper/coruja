@@ -174,7 +174,7 @@ describe('notifications about the roster', () => {
     expect(toHawk[1]).toEqual({
       topic: 'coruja-hawk',
       title: 'Sobreaviso amanhã',
-      message: 'qui 10/12: 18:00 → 09:00 (15h)',
+      message: 'Amanhã (qui 10/12) você está de sobreaviso das 18:00 às 09:00 de sex 11/12 (15h).',
       click: `${TEST_APP_URL}/#/mes/2026-12`,
       tags: ['owl'],
     })
@@ -190,7 +190,8 @@ describe('notifications about the roster', () => {
       expect.objectContaining({
         topic: 'coruja-hawk',
         title: 'Sua escala mudou',
-        message: 'qui 10/12: 18:00 → 09:00 (15h)\nMudança feita por owl.',
+        message:
+          'owl mudou seus turnos:\n• qui 10/12: agora você está de sobreaviso das 18:00 às 09:00 de sex 11/12 (15h)',
       }),
     ])
   })
@@ -202,7 +203,7 @@ describe('notifications about the roster', () => {
     expect(published).toEqual([
       expect.objectContaining({
         topic: 'coruja-hawk',
-        message: 'qui 10/12: você saiu da escala\nMudança feita por owl.',
+        message: 'owl mudou seus turnos:\n• qui 10/12: você não está mais de sobreaviso',
       }),
     ])
   })
